@@ -52,7 +52,7 @@ Les tests doivent **toujours tourner sur une base de données « test » réinit
   ```
   Cela exécute `migrate:deploy` puis `db:seed` avec les variables de `.env.test`.
 - Les tests partent du principe que les comptes seed existent :  
-  `client@example.com`, `host@example.com`, `admin@example.com` — mot de passe `demo`.  
+  `client@example.com`, `host@example.com`, `mohamedsakho@drivepark.net` (admin) — mot de passe `demo`.  
   Une annonce active « Citadine centre Paris » (ville Paris) est créée pour le host.
 
 ---

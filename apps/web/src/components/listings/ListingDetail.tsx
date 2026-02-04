@@ -66,6 +66,7 @@ export function ListingDetail({ listing }: { listing: Listing }) {
         <Link
           href={`/${locale}/listings/${listing.id}/checkout`}
           className="inline-block rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground hover:opacity-90"
+          data-testid="listing-book-link"
         >
           {t('book')}
         </Link>

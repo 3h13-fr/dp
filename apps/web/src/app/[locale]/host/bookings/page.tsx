@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { apiFetch } from '@/lib/api';
 
 type Booking = {
@@ -31,12 +31,12 @@ export default function HostBookingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Incoming bookings</h1>
+      <h1 className="text-2xl font-bold">{t('incomingBookingsTitle')}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {data.total} booking{data.total !== 1 ? 's' : ''}
+        {t('bookingsCount', { count: data.total })}
       </p>
       {data.items.length === 0 ? (
-        <p className="mt-6 text-muted-foreground">No bookings yet.</p>
+        <p className="mt-6 text-muted-foreground">{t('noBookings')}</p>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-left text-sm">

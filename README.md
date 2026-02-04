@@ -92,6 +92,8 @@ Variables utiles pour le frontend (optionnel) :
 NEXT_PUBLIC_API_URL=http://localhost:4000
 ```
 
+**Connexion par code (OTP)** : en dev, le code à 6 chiffres est **affiché dans le terminal de l’API** à chaque envoi (ex. `[OTP] Code for xxx@example.com: 123456`). Tu peux le copier pour te connecter sans consulter ta boîte mail. Avec `SMTP_HOST=localhost` et `SMTP_PORT=1025`, les mails sont envoyés à un serveur local type Mailhog/Mailpit (interface souvent sur http://localhost:8025) et ne partent pas vers de vraies adresses. Pour recevoir les codes sur une vraie adresse, configure un SMTP réel (Gmail, SendGrid, etc.) dans le `.env` ou dans Admin → Réglages → Clés API.
+
 ### 6. Vérifier que toutes les URLs répondent correctement
 
 Une fois `pnpm dev` lancé, exécuter le script de vérification des routes (API + frontend) :

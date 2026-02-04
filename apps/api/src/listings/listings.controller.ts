@@ -28,6 +28,7 @@ export class ListingsController {
     @Query('type') type?: ListingType,
     @Query('city') city?: string,
     @Query('country') country?: string,
+    @Query('category') category?: string,
     @Query('lat') lat?: string,
     @Query('lng') lng?: string,
     @Query('radius') radius?: string,
@@ -50,6 +51,7 @@ export class ListingsController {
       type,
       city,
       country,
+      category,
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
     });

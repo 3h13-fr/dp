@@ -66,6 +66,17 @@ export class QueueService {
     });
   }
 
+  /** OTP code email (passwordless login). */
+  async enqueueOtpEmail(toEmail: string, code: string, locale = 'en') {
+    return this.addEmail({
+      to: toEmail,
+      subject: locale === 'fr' ? 'Votre code de connexion' : 'Your login code',
+      template: 'otp',
+      locale,
+      variables: { code },
+    });
+  }
+
   /** In-app notification (e.g. new message). */
   async enqueueNotification(userId: string, type: string, title: string, body?: string, data?: Record<string, unknown>) {
     return this.addNotification({ userId, type, title, body, data });

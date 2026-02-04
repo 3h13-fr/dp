@@ -45,6 +45,20 @@ model User {
   auditLogs         AuditLog[]
 }
 
+// ——— OTP (passwordless login / signup) ———
+model OtpRequest {
+  id        String   @id @default(cuid())
+  email     String?  // primary for now; SMS later
+  phone     String?
+  code      String   // 6 digits
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([phone])
+  @@index([expiresAt])
+}
+
 // ——— KYC / Trust ———
 model KycVerification {
   id        String   @id @default(cuid())
@@ -263,4 +277,15 @@ model AuditLog {
   @@index([userId])
   @@index([resource, resourceId])
   @@index([createdAt])
+}
+
+// ——— Admin settings (API keys, tokens, etc.) ———
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique  // e.g. STRIPE_SECRET_KEY, GOOGLE_CLIENT_ID
+  value     String   @db.Text // stored as plain; consider encryption for production
+  category  String?  // stripe, google, apple, smtp, etc.
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
 }

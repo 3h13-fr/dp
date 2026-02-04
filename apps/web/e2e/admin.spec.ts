@@ -2,13 +2,17 @@ import { test, expect } from '@playwright/test';
 
 const LOCALE = 'en';
 
+const LOGIN_DEMO = `/${LOCALE}/login?demo=1`;
+
 test.describe('Admin: validate / moderate listing', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/${LOCALE}/login`);
-    await page.getByPlaceholder('Email').fill('admin@example.com');
-    await page.getByPlaceholder('Password').fill('demo');
-    await page.getByRole('button', { name: /Sign in/i }).click();
-    await expect(page).toHaveURL(/\/(en|fr)\/admin/, { timeout: 10000 });
+    await page.goto(LOGIN_DEMO);
+    const demoSection = page.getByTestId('demo-login-section');
+    await expect(demoSection).toBeVisible({ timeout: 20000 });
+    await demoSection.getByPlaceholder('Email').fill('mohamedsakho@drivepark.net', { timeout: 10000 });
+    await demoSection.getByPlaceholder('Password').fill('demo', { timeout: 10000 });
+    await demoSection.getByRole('button', { name: /Sign in/i }).click({ timeout: 10000 });
+    await expect(page).toHaveURL(/\/(en|fr)\/admin/, { timeout: 15000 });
   });
 
   test('admin sees listings moderation page', async ({ page }) => {

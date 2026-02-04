@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { apiFetch } from '@/lib/api';
 
 type Listing = {
@@ -20,6 +20,7 @@ type Listing = {
 
 export default function HostDashboardPage() {
   const locale = useLocale();
+  const t = useTranslations('hostNav');
   const [data, setData] = useState<{ items: Listing[]; total: number } | null>(null);
 
   useEffect(() => {
@@ -33,14 +34,12 @@ export default function HostDashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Host dashboard</h1>
+      <h1 className="text-2xl font-bold">{t('dashboardTitle')}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {data.total} listing{data.total !== 1 ? 's' : ''}
+        {t('listingsCount', { count: data.total })}
       </p>
       {data.items.length === 0 ? (
-        <p className="mt-6 text-muted-foreground">
-          You have no listings yet. Listings are created via the API or Prisma Studio for now.
-        </p>
+        <p className="mt-6 text-muted-foreground">{t('noListings')}</p>
       ) : (
         <ul className="mt-6 space-y-4">
           {data.items.map((listing) => (
@@ -75,7 +74,7 @@ export default function HostDashboardPage() {
                 href={`/${locale}/listings/${listing.id}`}
                 className="text-sm font-medium text-primary hover:underline"
               >
-                View
+                {t('viewListing')}
               </Link>
             </li>
           ))}

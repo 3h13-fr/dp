@@ -12,19 +12,115 @@
   "home": {
     "title": "Mobility Platform",
     "subtitle": "Rent cars, book experiences, or hire a driver.",
-    "searchPlaceholder": "City, airport or address",
+    "searchPlaceholder": "Enter an address, city...",
+    "searchVehicle": "Search for a vehicle",
+    "startDate": "Start date",
+    "returnDate": "Return date",
     "dates": "Dates",
     "guests": "Guests",
-    "searchButton": "Search"
+    "searchButton": "Search",
+    "filter": "Filters"
+  },
+  "categories": {
+    "new": "New",
+    "city": "City car",
+    "economy": "Economy",
+    "electric": "Electric",
+    "convertible": "Convertible",
+    "sport": "Sports",
+    "luxury": "Luxury",
+    "suv": "SUV & 4x4",
+    "family": "Family",
+    "van": "Van & Minibus",
+    "collection": "Collection"
+  },
+  "listingCard": {
+    "by": "By:",
+    "new": "New",
+    "perDay": "per day",
+    "seats": "Seats",
+    "fuel": "Petrol",
+    "fuelDiesel": "Diesel",
+    "fuelElectric": "Electric",
+    "fuelHybrid": "Hybrid",
+    "transmissionAuto": "Automatic",
+    "transmissionManual": "Manual"
+  },
+  "hostNav": {
+    "dashboard": "Dashboard",
+    "myListings": "My listings",
+    "bookings": "Incoming bookings",
+    "dashboardTitle": "Partner dashboard",
+    "listingsCount": "{count} listing(s)",
+    "noListings": "You have no listings yet. The add-listing flow will be available soon.",
+    "viewListing": "View",
+    "incomingBookingsTitle": "Incoming bookings",
+    "noBookings": "No bookings yet.",
+    "bookingsCount": "{count} booking(s)",
+    "viewSite": "View site",
+    "switchToClient": "Client mode",
+    "logout": "Log out"
   },
   "nav": {
     "listings": "Listings",
+    "vehicles": "Vehicles",
+    "experiences": "Experiences",
+    "location": "Location",
+    "experience": "Experience",
+    "chauffeur": "Chauffeur",
+    "notifications": "Notifications",
+    "menu": "Menu",
     "myBookings": "My trips",
     "messages": "Messages",
     "account": "Account",
     "logout": "Log out",
     "host": "Host dashboard",
-    "admin": "Admin"
+    "admin": "Admin",
+    "rentMyVehicles": "Rent my vehicles",
+    "helpCenter": "Help center",
+    "assistanceDrivePark": "Drive Park Support",
+    "howItWorks": "How it works",
+    "profile": "Profile",
+    "favorites": "Favorites",
+    "reservations": "Bookings",
+    "assistance": "Assistance",
+    "partnerDashboard": "Partner dashboard",
+    "adminDashboard": "Admin dashboard"
+  },
+  "profil": {
+    "title": "Profile",
+    "connectToStart": "Log in to start booking your next car.",
+    "noAccount": "Don't have an account?",
+    "owner": "Owner",
+    "partnerDashboard": "Partner dashboard",
+    "accessPartnerDashboard": "Access partner dashboard",
+    "accessAdminDashboard": "Access admin dashboard",
+    "switchToPartner": "Partner mode",
+    "rentMyVehicles": "Rent my vehicles",
+    "assistance": "Assistance",
+    "howItWorks": "How it works",
+    "visitHelpCenter": "Visit the help center",
+    "assistanceDrivePark": "Drive Park Support",
+    "social": "Social",
+    "followInstagram": "Follow us on Instagram",
+    "followLinkedIn": "Follow us on LinkedIn",
+    "followTwitter": "Follow us on Twitter",
+    "legal": "Legal information",
+    "terms": "Terms and conditions",
+    "privacy": "Privacy policy",
+    "legalNotice": "Legal notice",
+    "languageAndCurrency": "Language and currency",
+    "french": "French",
+    "eur": "EUR (€)",
+    "copyright": "© 2024 Drive Park - All rights reserved"
+  },
+  "bottomNav": {
+    "search": "Search",
+    "favorites": "Favorites",
+    "reservations": "Bookings",
+    "messages": "Messages",
+    "notifications": "Notifications",
+    "assistance": "Assistance"
   },
   "listing": {
     "book": "Book",
@@ -34,8 +130,32 @@
   },
   "listings": {
     "title": "Listings",
+    "location": "Location",
+    "experience": "Experience",
+    "chauffeur": "Chauffeur",
+    "seeAll": "See all",
     "found": "{count} listing(s) found",
     "noResults": "No listings found. Try another search."
+  },
+  "searchLocation": {
+    "placeholder": "City, airport or address",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "seats": "Seats",
+    "button": "Search"
+  },
+  "searchExperience": {
+    "placeholder": "City or region",
+    "date": "Date",
+    "duration": "Duration (optional)",
+    "button": "Search"
+  },
+  "searchChauffeur": {
+    "placeholder": "Pick-up location",
+    "date": "Date",
+    "time": "Time",
+    "duration": "Duration (hours)",
+    "button": "Search"
   },
   "checkout": {
     "title": "Checkout",
@@ -68,6 +188,8 @@
     "title": "Messages",
     "allConversations": "All conversations",
     "noConversations": "No conversations yet. Book a trip to start messaging your host or guest.",
+    "driveParkConversation": "DrivePark",
+    "driveParkDescription": "Notifications and updates",
     "with": "with",
     "typePlaceholder": "Type a message...",
     "send": "Send"
@@ -78,11 +200,57 @@
     "password": "Password",
     "signIn": "Sign in",
     "demoHint": "Demo: use password \"demo\" with any existing user email (admin role for /admin).",
-    "apiUnreachable": "Cannot reach the API. Start it with: cd /Applications/DP && pnpm run dev:api"
+    "apiUnreachable": "Cannot reach the API. Start it with: cd /Applications/DP && pnpm run dev:api",
+    "continueWithApple": "Continue with Apple",
+    "continueWithGoogle": "Continue with Google",
+    "continueWithCode": "Continue with a code",
+    "emailOrPhone": "Email or phone",
+    "email": "Email",
+    "phone": "Phone",
+    "sendCode": "Send code",
+    "sending": "Sending...",
+    "enterCode": "Enter the code we sent",
+    "codePlaceholder": "123456",
+    "verify": "Verify",
+    "verifying": "Verifying...",
+    "resendCode": "Resend code",
+    "resendIn": "Resend in {seconds}s",
+    "changeEmailPhone": "Change email or phone",
+    "noCodeReceived": "Didn't receive the code?",
+    "noCodeHint": "Check spam or resend. You can also change your email or number below.",
+    "codeSent": "A code was sent to {target}.",
+    "comingSoon": "Coming soon",
+    "entryHint": "By default the code is sent by email. No password to remember."
+  },
+  "admin": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "users": "Users",
+      "listings": "Listings",
+      "audit": "Audit logs",
+      "settings": "Settings",
+      "apiKeys": "API keys"
+    },
+    "settings": {
+      "apiKeysTitle": "API keys and tokens",
+      "apiKeysDescription": "Enter the keys, tokens or credentials needed for integrations (Stripe, Google, Apple, SMTP…). Existing values are masked; leave blank to keep the current one.",
+      "loading": "Loading…",
+      "currentValue": "Current value",
+      "leaveBlankToKeep": "Leave blank to keep unchanged",
+      "enterValue": "Enter value",
+      "enterAtLeastOne": "Enter at least one value to save.",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "{count} key(s) saved.",
+      "saveError": "Error while saving."
+    }
   },
   "errors": {
     "generic": "Something went wrong",
     "loginFailed": "Login failed",
-    "noToken": "No token received"
+    "noToken": "No token received",
+    "invalidOrExpiredCode": "Invalid or expired code",
+    "emailOrPhoneRequired": "Please enter an email or phone number",
+    "waitBeforeResend": "Please wait before requesting another code"
   }
 }

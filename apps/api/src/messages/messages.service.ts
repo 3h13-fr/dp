@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { QueueService } from '../queue/queue.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class MessagesService {
@@ -9,6 +10,7 @@ export class MessagesService {
     private prisma: PrismaService,
     private events: EventsGateway,
     private queue: QueueService,
+    private notifications: NotificationsService,
   ) {}
 
   /** Ensure user is guest or host of the booking */
@@ -24,35 +26,67 @@ export class MessagesService {
     return booking;
   }
 
-  /** Thread for one booking (guest + host only). One reservation = one private conversation. */
+  /** Thread for one booking (guest + host only). Messages + notifications linked to this reservation. */
   async findThreadByBooking(bookingId: string, userId: string) {
     await this.assertParticipant(bookingId, userId);
-    return this.prisma.message.findMany({
-      where: { bookingId },
-      orderBy: { createdAt: 'asc' },
-      include: {
-        sender: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
-      },
-    });
+    const [messages, bookingNotifications] = await Promise.all([
+      this.prisma.message.findMany({
+        where: { bookingId },
+        orderBy: { createdAt: 'asc' },
+        include: {
+          sender: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+        },
+      }),
+      this.notifications.findForUserByBooking(userId, bookingId),
+    ]);
+    const notificationItems = bookingNotifications.map((n) => ({
+      id: `notif-${n.id}`,
+      body: [n.title, n.body].filter(Boolean).join(' — ') || n.type,
+      createdAt: n.createdAt,
+      readAt: n.readAt,
+      senderId: null as string | null,
+      sender: null,
+      isSystem: true as const,
+      notificationId: n.id,
+    }));
+    const combined = [...messages.map((m) => ({ ...m, isSystem: false as const })), ...notificationItems];
+    combined.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    return combined;
   }
 
-  /** List conversations: bookings where user is guest or host, with last message and other user. */
+  /** Notifications not linked to a reservation → conversation DrivePark (read-only thread). */
+  async findDriveParkThread(userId: string) {
+    const list = await this.notifications.findForUserGeneral(userId);
+    return list.map((n) => ({
+      id: `notif-${n.id}`,
+      body: [n.title, n.body].filter(Boolean).join(' — ') || n.type,
+      createdAt: n.createdAt,
+      readAt: n.readAt,
+      isSystem: true as const,
+      notificationId: n.id,
+    }));
+  }
+
+  /** List conversations: booking threads + one "DrivePark" for general notifications. */
   async findConversations(userId: string) {
-    const bookings = await this.prisma.booking.findMany({
-      where: { OR: [{ guestId: userId }, { hostId: userId }] },
-      orderBy: { updatedAt: 'desc' },
-      include: {
-        listing: { select: { id: true, title: true } },
-        guest: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
-        host: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
-        messages: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          include: { sender: { select: { id: true, firstName: true, lastName: true } } },
+    const [bookings, driveParkNotifications] = await Promise.all([
+      this.prisma.booking.findMany({
+        where: { OR: [{ guestId: userId }, { hostId: userId }] },
+        orderBy: { updatedAt: 'desc' },
+        include: {
+          listing: { select: { id: true, title: true } },
+          guest: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+          host: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+          messages: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            include: { sender: { select: { id: true, firstName: true, lastName: true } } },
+          },
         },
-      },
-    });
-    return bookings.map((b) => {
+      }),
+      this.notifications.findForUserGeneral(userId, 1),
+    ]);
+    const bookingConversations = bookings.map((b) => {
       const otherUser = b.guestId === userId ? b.host : b.guest;
       const lastMessage = b.messages[0];
       return {
@@ -65,6 +99,18 @@ export class MessagesService {
         status: b.status,
       };
     });
+    const driveParkLast = driveParkNotifications[0];
+    const driveParkConversation = {
+      drivepark: true as const,
+      bookingId: 'drivepark',
+      listing: { id: '', title: 'DrivePark' },
+      otherUser: null,
+      lastMessage: driveParkLast
+        ? { id: `notif-${driveParkLast.id}`, body: [driveParkLast.title, driveParkLast.body].filter(Boolean).join(' — ') || driveParkLast.type, createdAt: driveParkLast.createdAt, senderId: null as string | null }
+        : null,
+      status: '',
+    };
+    return [driveParkConversation, ...bookingConversations];
   }
 
   /** Send message in a booking thread. Receiver is the other party (host or guest). */

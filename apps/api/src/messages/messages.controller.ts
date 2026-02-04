@@ -25,14 +25,15 @@ export class MessagesController {
     return this.messages.findConversations(user.id);
   }
 
-  /** Thread for one booking. Requires bookingId. User must be guest or host. */
+  /** Thread: use bookingId=drivepark for DrivePark (general notifications), otherwise booking thread (messages + reservation notifications). */
   @UseGuards(AuthGuard('jwt'))
   @Get('thread')
-  thread(
+  async thread(
     @CurrentUser() user: User,
     @Query('bookingId') bookingId: string,
   ) {
     if (!bookingId) throw new BadRequestException('bookingId required');
+    if (bookingId === 'drivepark') return this.messages.findDriveParkThread(user.id);
     return this.messages.findThreadByBooking(bookingId, user.id);
   }
 

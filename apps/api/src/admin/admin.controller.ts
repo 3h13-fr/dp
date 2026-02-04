@@ -1,4 +1,6 @@
 import { Body, Controller, Get, Patch, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { IsArray, IsString, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { AuthGuard } from '@nestjs/passport';
 import { AdminService } from './admin.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -62,5 +64,16 @@ export class AdminController {
       offset ? parseInt(offset, 10) : undefined,
       resource,
     );
+  }
+
+  @Get('settings')
+  getSettings(): Promise<{ items: { key: string; label: string; category: string; valueMasked: string; hasValue: boolean }[] }> {
+    return this.admin.getSettings();
+  }
+
+  @Patch('settings')
+  updateSettings(@Body() body: { updates: { key: string; value: string }[] }): Promise<{ updated: number }> {
+    const updates = Array.isArray(body?.updates) ? body.updates : [];
+    return this.admin.updateSettings(updates);
   }
 }

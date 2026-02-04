@@ -1,18 +1,23 @@
-import { useTranslations } from 'next-intl';
-import { SearchBar } from '@/components/SearchBar';
+import { getTranslations } from 'next-intl/server';
+import { HomeSearchBar } from '@/components/home/HomeSearchBar';
+import { CategoryChips } from '@/components/home/CategoryChips';
+import { HomeListingsGrid } from '@/components/home/HomeListingsGrid';
 
-export default function HomePage() {
-  const t = useTranslations('home');
+export default async function HomePage() {
+  const t = await getTranslations('home');
   return (
-    <div className="relative flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center px-4">
-      <div className="mx-auto max-w-2xl text-center">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-          {t('title')}
-        </h1>
-        <p className="mt-3 text-lg text-muted-foreground">{t('subtitle')}</p>
-      </div>
-      <div className="mx-auto mt-10 w-full max-w-2xl">
-        <SearchBar />
+    <div className="min-h-[calc(100vh-3.5rem)] bg-white">
+      <div className="mx-auto max-w-6xl px-4 py-6">
+        <section className="mb-8">
+          <HomeSearchBar />
+        </section>
+        <section className="mb-6">
+          <h2 className="sr-only">{t('searchPlaceholder')}</h2>
+          <CategoryChips />
+        </section>
+        <section>
+          <HomeListingsGrid />
+        </section>
       </div>
     </div>
   );

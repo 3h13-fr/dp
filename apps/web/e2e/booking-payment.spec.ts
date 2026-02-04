@@ -2,13 +2,17 @@ import { test, expect } from '@playwright/test';
 
 const LOCALE = 'en';
 
+const LOGIN_DEMO = `/${LOCALE}/login?demo=1`;
+
 test.describe('Booking: reserve → pay (test mode) → confirmation', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/${LOCALE}/login`);
-    await page.getByPlaceholder('Email').fill('client@example.com');
-    await page.getByPlaceholder('Password').fill('demo');
-    await page.getByRole('button', { name: /Sign in/i }).click();
-    await expect(page).toHaveURL(/\/(en|fr)(\/|$)/, { timeout: 10000 });
+    await page.goto(LOGIN_DEMO);
+    const demoSection = page.getByTestId('demo-login-section');
+    await expect(demoSection).toBeVisible({ timeout: 20000 });
+    await demoSection.getByPlaceholder('Email').fill('client@example.com', { timeout: 10000 });
+    await demoSection.getByPlaceholder('Password').fill('demo', { timeout: 10000 });
+    await demoSection.getByRole('button', { name: /Sign in/i }).click({ timeout: 10000 });
+    await expect(page).toHaveURL(/\/(en|fr)(\/|$)/, { timeout: 15000 });
     await expect(async () => {
       const token = await page.evaluate(() => localStorage.getItem('access_token'));
       expect(token).toBeTruthy();
@@ -19,9 +23,9 @@ test.describe('Booking: reserve → pay (test mode) → confirmation', () => {
     await page.getByPlaceholder(/City|address/i).fill('Paris');
     await page.getByRole('button', { name: /Search/i }).click();
     await expect(page).toHaveURL(new RegExp(`/${LOCALE}/listings`));
-    await page.locator('a[href*="/listings/"]').first().click();
+    await page.getByRole('link', { name: /Citadine/i }).first().click();
     await expect(page).toHaveURL(new RegExp(`/${LOCALE}/listings/[^/]+$`));
-    await page.getByRole('link', { name: /Book/i }).click();
+    await page.getByTestId('listing-book-link').click();
     await expect(page).toHaveURL(new RegExp(`/${LOCALE}/listings/[^/]+/checkout`));
 
     await expect(page.locator('input[type="datetime-local"]').first()).toBeVisible({ timeout: 10000 });
@@ -45,8 +49,8 @@ test.describe('Booking: reserve → pay (test mode) → confirmation', () => {
     await page.getByPlaceholder(/City|address/i).fill('Paris');
     await page.getByRole('button', { name: /Search/i }).click();
     await expect(page).toHaveURL(new RegExp(`/${LOCALE}/listings`));
-    await page.locator('a[href*="/listings/"]').first().click();
-    await page.getByRole('link', { name: /Book/i }).click();
+    await page.getByRole('link', { name: /Citadine/i }).first().click();
+    await page.getByTestId('listing-book-link').click();
     await expect(page.locator('input[type="datetime-local"]').first()).toBeVisible({ timeout: 10000 });
 
     const start = new Date();

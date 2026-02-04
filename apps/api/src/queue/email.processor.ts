@@ -54,6 +54,20 @@ function renderNewMessage(locale: string, variables: Record<string, string> | un
   };
 }
 
+function renderOtp(locale: string, variables: Record<string, string> | undefined): { subject: string; html: string } {
+  const code = variables?.code ?? '';
+  if (locale === 'fr') {
+    return {
+      subject: 'Votre code de connexion',
+      html: `<p>Votre code de connexion est : <strong>${code}</strong></p><p>Il expire dans 10 minutes. Ne le partagez avec personne.</p>`,
+    };
+  }
+  return {
+    subject: 'Your login code',
+    html: `<p>Your login code is: <strong>${code}</strong></p><p>It expires in 10 minutes. Do not share it with anyone.</p>`,
+  };
+}
+
 @Processor('email')
 export class EmailProcessor extends WorkerHost {
   private readonly logger = new Logger(EmailProcessor.name);
@@ -99,6 +113,10 @@ export class EmailProcessor extends WorkerHost {
       html = rendered.html;
     } else if (template === 'new-message') {
       const rendered = renderNewMessage(effectiveLocale, variables);
+      subject = rendered.subject;
+      html = rendered.html;
+    } else if (template === 'otp') {
+      const rendered = renderOtp(effectiveLocale, variables);
       subject = rendered.subject;
       html = rendered.html;
     } else {

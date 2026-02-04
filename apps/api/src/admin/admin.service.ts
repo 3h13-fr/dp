@@ -2,6 +2,31 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role } from 'database';
 
+/** Known API keys / tokens that admins can set. Add new keys here and in ADMIN_SETTINGS_KEYS. */
+export const ADMIN_SETTINGS_KEYS = [
+  { key: 'STRIPE_SECRET_KEY', label: 'Stripe Secret Key', category: 'stripe', secret: true },
+  { key: 'STRIPE_WEBHOOK_SECRET', label: 'Stripe Webhook Secret', category: 'stripe', secret: true },
+  { key: 'STRIPE_PUBLISHABLE_KEY', label: 'Stripe Publishable Key', category: 'stripe', secret: false },
+  { key: 'GOOGLE_CLIENT_ID', label: 'Google Client ID', category: 'google', secret: false },
+  { key: 'GOOGLE_CLIENT_SECRET', label: 'Google Client Secret', category: 'google', secret: true },
+  { key: 'APPLE_CLIENT_ID', label: 'Apple Client ID (Service ID)', category: 'apple', secret: false },
+  { key: 'APPLE_CLIENT_SECRET', label: 'Apple Client Secret / Key', category: 'apple', secret: true },
+  { key: 'APPLE_TEAM_ID', label: 'Apple Team ID', category: 'apple', secret: false },
+  { key: 'APPLE_KEY_ID', label: 'Apple Key ID', category: 'apple', secret: false },
+  { key: 'SMTP_HOST', label: 'SMTP Host', category: 'smtp', secret: false },
+  { key: 'SMTP_PORT', label: 'SMTP Port', category: 'smtp', secret: false },
+  { key: 'SMTP_USER', label: 'SMTP User', category: 'smtp', secret: false },
+  { key: 'SMTP_PASS', label: 'SMTP Password', category: 'smtp', secret: true },
+  { key: 'SMTP_FROM', label: 'SMTP From (sender email)', category: 'smtp', secret: false },
+] as const;
+
+function maskValue(value: string, isSecret: boolean): string {
+  if (!value || value.length === 0) return '';
+  if (!isSecret) return value;
+  if (value.length <= 8) return '••••••••';
+  return value.slice(0, 4) + '••••••••' + value.slice(-4);
+}
+
 @Injectable()
 export class AdminService {
   constructor(private prisma: PrismaService) {}
@@ -89,5 +114,40 @@ export class AdminService {
       this.prisma.listing.count({ where }),
     ]);
     return { items, total };
+  }
+
+  /** Get all admin settings (API keys, etc.) with masked secret values. */
+  async getSettings(): Promise<{ items: { key: string; label: string; category: string; valueMasked: string; hasValue: boolean }[] }> {
+    const stored = await this.prisma.setting.findMany({
+      where: { key: { in: ADMIN_SETTINGS_KEYS.map((k) => k.key) } },
+    });
+    const byKey = new Map(stored.map((s) => [s.key, s.value]));
+    const items = ADMIN_SETTINGS_KEYS.map((def) => {
+      const value = byKey.get(def.key) ?? '';
+      return {
+        key: def.key,
+        label: def.label,
+        category: def.category,
+        valueMasked: maskValue(value, def.secret),
+        hasValue: value.length > 0,
+      };
+    });
+    return { items };
+  }
+
+  /** Update one or more settings. Only provided keys are updated. */
+  async updateSettings(updates: { key: string; value: string }[]): Promise<{ updated: number }> {
+    let updated = 0;
+    for (const { key, value } of updates) {
+      const allowed = ADMIN_SETTINGS_KEYS.some((k) => k.key === key);
+      if (!allowed) continue;
+      await this.prisma.setting.upsert({
+        where: { key },
+        create: { key, value, category: ADMIN_SETTINGS_KEYS.find((k) => k.key === key)?.category ?? null },
+        update: { value },
+      });
+      updated++;
+    }
+    return { updated };
   }
 }

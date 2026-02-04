@@ -12,19 +12,115 @@
   "home": {
     "title": "Plateforme de mobilité",
     "subtitle": "Louez une voiture, réservez une expérience ou un chauffeur.",
-    "searchPlaceholder": "Ville, aéroport ou adresse",
+    "searchPlaceholder": "Saisissez une adresse, ville...",
+    "searchVehicle": "Rechercher un véhicule",
+    "startDate": "Date de début",
+    "returnDate": "Date de retour",
     "dates": "Dates",
     "guests": "Voyageurs",
-    "searchButton": "Rechercher"
+    "searchButton": "Rechercher",
+    "filter": "Filtres"
+  },
+  "categories": {
+    "new": "Nouveautés",
+    "city": "Citadine",
+    "economy": "Économique",
+    "electric": "Électrique",
+    "convertible": "Cabriolet",
+    "sport": "Sportive",
+    "luxury": "Luxueuse",
+    "suv": "SUV & 4x4",
+    "family": "Familiale",
+    "van": "Van & Minibus",
+    "collection": "Collection"
+  },
+  "listingCard": {
+    "by": "Par :",
+    "new": "Nouveau",
+    "perDay": "par jour",
+    "seats": "Places",
+    "fuel": "Essence",
+    "fuelDiesel": "Diesel",
+    "fuelElectric": "Électrique",
+    "fuelHybrid": "Hybride",
+    "transmissionAuto": "Automatique",
+    "transmissionManual": "Manuelle"
+  },
+  "hostNav": {
+    "dashboard": "Tableau de bord",
+    "myListings": "Mes annonces",
+    "bookings": "Réservations reçues",
+    "dashboardTitle": "Tableau de bord partenaire",
+    "listingsCount": "{count} annonce(s)",
+    "noListings": "Vous n'avez pas encore d'annonces. Le parcours d'ajout d'annonce sera disponible prochainement.",
+    "viewListing": "Voir",
+    "incomingBookingsTitle": "Réservations reçues",
+    "noBookings": "Aucune réservation pour l'instant.",
+    "bookingsCount": "{count} réservation(s)",
+    "viewSite": "Voir le site",
+    "switchToClient": "Mode client",
+    "logout": "Déconnexion"
   },
   "nav": {
     "listings": "Annonces",
+    "vehicles": "Véhicules",
+    "experiences": "Expériences",
+    "location": "Location",
+    "experience": "Expérience",
+    "chauffeur": "Chauffeur",
+    "notifications": "Notifications",
+    "menu": "Menu",
     "myBookings": "Mes voyages",
     "messages": "Messages",
     "account": "Compte",
     "logout": "Déconnexion",
     "host": "Espace partenaire",
-    "admin": "Admin"
+    "admin": "Admin",
+    "rentMyVehicles": "Louer mes véhicules",
+    "helpCenter": "Centre d'aide",
+    "assistanceDrivePark": "Assistance Drive Park",
+    "howItWorks": "Comment ça marche",
+    "profile": "Profil",
+    "favorites": "Favoris",
+    "reservations": "Réservations",
+    "assistance": "Assistance",
+    "partnerDashboard": "Tableau de bord partenaire",
+    "adminDashboard": "Tableau de bord admin"
+  },
+  "profil": {
+    "title": "Profil",
+    "connectToStart": "Connectez-vous pour commencer à réserver votre prochaine voiture.",
+    "noAccount": "Vous n'avez pas de compte ?",
+    "owner": "Propriétaire",
+    "partnerDashboard": "Tableau de bord partenaire",
+    "accessPartnerDashboard": "Accéder au tableau de bord partenaire",
+    "accessAdminDashboard": "Accéder au tableau de bord admin",
+    "switchToPartner": "Mode partenaire",
+    "rentMyVehicles": "Louer mes véhicules",
+    "assistance": "Assistance",
+    "howItWorks": "Comment ça marche",
+    "visitHelpCenter": "Visiter le centre d'aide",
+    "assistanceDrivePark": "Assistance Drive Park",
+    "social": "Social",
+    "followInstagram": "Suivez-nous sur Instagram",
+    "followLinkedIn": "Suivez-nous sur LinkedIn",
+    "followTwitter": "Suivez-nous sur Twitter",
+    "legal": "Informations légales",
+    "terms": "Conditions générales",
+    "privacy": "Politique de confidentialité",
+    "legalNotice": "Mentions légales",
+    "languageAndCurrency": "Langues et devises",
+    "french": "Français",
+    "eur": "EUR (€)",
+    "copyright": "© 2024 Drive Park - Tous droits réservés"
+  },
+  "bottomNav": {
+    "search": "Rechercher",
+    "favorites": "Favoris",
+    "reservations": "Réservations",
+    "messages": "Messages",
+    "notifications": "Notifications",
+    "assistance": "Assistance"
   },
   "listing": {
     "book": "Réserver",
@@ -34,8 +130,32 @@
   },
   "listings": {
     "title": "Annonces",
+    "location": "Location",
+    "experience": "Expérience",
+    "chauffeur": "Chauffeur",
+    "seeAll": "Voir tout",
     "found": "{count} annonce(s) trouvée(s)",
     "noResults": "Aucune annonce. Essayez une autre recherche."
+  },
+  "searchLocation": {
+    "placeholder": "Ville, aéroport ou adresse",
+    "startDate": "Date de début",
+    "endDate": "Date de fin",
+    "seats": "Places",
+    "button": "Rechercher"
+  },
+  "searchExperience": {
+    "placeholder": "Ville ou région",
+    "date": "Date",
+    "duration": "Durée (optionnel)",
+    "button": "Rechercher"
+  },
+  "searchChauffeur": {
+    "placeholder": "Lieu de prise en charge",
+    "date": "Date",
+    "time": "Heure",
+    "duration": "Durée (heures)",
+    "button": "Rechercher"
   },
   "checkout": {
     "title": "Réservation",
@@ -68,6 +188,8 @@
     "title": "Messages",
     "allConversations": "Toutes les conversations",
     "noConversations": "Aucune conversation. Réservez un voyage pour échanger avec votre hôte ou voyageur.",
+    "driveParkConversation": "DrivePark",
+    "driveParkDescription": "Notifications et actualités",
     "with": "avec",
     "typePlaceholder": "Écrivez un message...",
     "send": "Envoyer"
@@ -78,11 +200,57 @@
     "password": "Mot de passe",
     "signIn": "Se connecter",
     "demoHint": "Démo : mot de passe \"demo\" avec un e-mail existant (rôle admin pour /admin).",
-    "apiUnreachable": "Impossible de joindre l'API. Démarrer avec : cd /Applications/DP && pnpm run dev:api"
+    "apiUnreachable": "Impossible de joindre l'API. Démarrer avec : cd /Applications/DP && pnpm run dev:api",
+    "continueWithApple": "Continuer avec Apple",
+    "continueWithGoogle": "Continuer avec Google",
+    "continueWithCode": "Continuer avec un code",
+    "emailOrPhone": "E-mail ou téléphone",
+    "email": "E-mail",
+    "phone": "Téléphone",
+    "sendCode": "Envoyer un code",
+    "sending": "Envoi...",
+    "enterCode": "Saisissez le code envoyé",
+    "codePlaceholder": "123456",
+    "verify": "Valider",
+    "verifying": "Vérification...",
+    "resendCode": "Renvoyer le code",
+    "resendIn": "Renvoyer dans {seconds}s",
+    "changeEmailPhone": "Changer d'e-mail ou de téléphone",
+    "noCodeReceived": "Vous ne recevez pas le code ?",
+    "noCodeHint": "Vérifiez les spams ou renvoyez le code. Vous pouvez aussi changer d'e-mail ou de numéro ci-dessous.",
+    "codeSent": "Un code a été envoyé à {target}.",
+    "comingSoon": "Bientôt disponible",
+    "entryHint": "Par défaut le code est envoyé par e-mail. Pas de mot de passe à retenir."
+  },
+  "admin": {
+    "nav": {
+      "dashboard": "Tableau de bord",
+      "users": "Utilisateurs",
+      "listings": "Annonces",
+      "audit": "Journaux d'audit",
+      "settings": "Réglages",
+      "apiKeys": "Clés API"
+    },
+    "settings": {
+      "apiKeysTitle": "Clés API et tokens",
+      "apiKeysDescription": "Saisissez les clés, tokens ou identifiants nécessaires pour les intégrations (Stripe, Google, Apple, SMTP…). Les valeurs existantes sont masquées ; laissez vide pour conserver l’actuelle.",
+      "loading": "Chargement…",
+      "currentValue": "Valeur actuelle",
+      "leaveBlankToKeep": "Laisser vide pour ne pas modifier",
+      "enterValue": "Saisir la valeur",
+      "enterAtLeastOne": "Saisissez au moins une valeur à enregistrer.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "saved": "{count} clé(s) enregistrée(s).",
+      "saveError": "Erreur lors de l’enregistrement."
+    }
   },
   "errors": {
     "generic": "Une erreur s'est produite",
     "loginFailed": "Échec de connexion",
-    "noToken": "Aucun jeton reçu"
+    "noToken": "Aucun jeton reçu",
+    "invalidOrExpiredCode": "Code invalide ou expiré",
+    "emailOrPhoneRequired": "Indiquez un e-mail ou un numéro de téléphone",
+    "waitBeforeResend": "Veuillez patienter avant de renvoyer un code"
   }
 }

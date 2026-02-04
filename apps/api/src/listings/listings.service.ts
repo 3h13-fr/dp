@@ -54,14 +54,16 @@ export class ListingsService {
     type?: ListingType;
     city?: string;
     country?: string;
+    category?: string;
     limit?: number;
     offset?: number;
   }): Promise<{ items: unknown[]; total: number }> {
-    const { type, city, country, limit = 20, offset = 0 } = params;
+    const { type, city, country, category, limit = 20, offset = 0 } = params;
     const where: Record<string, unknown> = { status: 'ACTIVE' };
     if (type) where.type = type;
     if (city) where.city = { contains: city, mode: 'insensitive' };
     if (country) where.country = { contains: country, mode: 'insensitive' };
+    if (category) where.category = { equals: category, mode: 'insensitive' };
 
     const [items, total] = await Promise.all([
       this.prisma.listing.findMany({

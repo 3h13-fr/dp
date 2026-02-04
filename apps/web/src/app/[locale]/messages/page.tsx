@@ -8,9 +8,10 @@ import { apiFetch, getToken } from '@/lib/api';
 
 type Conversation = {
   bookingId: string;
+  drivepark?: boolean;
   listing: { id: string; title: string };
   otherUser: { id: string; firstName: string | null; lastName: string | null; avatarUrl: string | null } | null;
-  lastMessage: { id: string; body: string; createdAt: string; senderId: string } | null;
+  lastMessage: { id: string; body: string; createdAt: string; senderId: string | null } | null;
   status: string;
 };
 
@@ -18,8 +19,9 @@ type Message = {
   id: string;
   body: string;
   createdAt: string;
-  senderId: string;
-  sender: { id: string; firstName: string | null; lastName: string | null };
+  senderId: string | null;
+  sender?: { id: string; firstName: string | null; lastName: string | null } | null;
+  isSystem?: boolean;
 };
 
 export default function MessagesPage() {
@@ -27,6 +29,8 @@ export default function MessagesPage() {
   const locale = useLocale();
   const searchParams = useSearchParams();
   const bookingIdParam = searchParams.get('bookingId');
+  const t = useTranslations('messages');
+  const tCommon = useTranslations('common');
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [thread, setThread] = useState<Message[]>([]);
@@ -62,7 +66,7 @@ export default function MessagesPage() {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bookingIdParam || !messageBody.trim() || sending) return;
+    if (!bookingIdParam || isDrivePark || !messageBody.trim() || sending) return;
     setSending(true);
     try {
       const res = await apiFetch('/messages/send', {
@@ -80,11 +84,10 @@ export default function MessagesPage() {
   };
 
   const currentConversation = conversations.find((c) => c.bookingId === bookingIdParam);
+  const isDrivePark = bookingIdParam === 'drivepark';
+  const driveParkTitle = t('driveParkConversation');
 
   if (!getToken()) return null;
-
-  const t = useTranslations('messages');
-  const tCommon = useTranslations('common');
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -102,19 +105,19 @@ export default function MessagesPage() {
           </Link>
           {currentConversation && (
             <p className="mt-2 font-medium">
-              {currentConversation.listing.title} · {t('with')} {currentConversation.otherUser?.firstName} {currentConversation.otherUser?.lastName}
+              {currentConversation.drivepark ? driveParkTitle : `${currentConversation.listing.title} · ${t('with')} ${currentConversation.otherUser?.firstName ?? ''} ${currentConversation.otherUser?.lastName ?? ''}`.trim()}
             </p>
           )}
           <div className="mt-4 space-y-3 rounded-lg border border-border bg-muted/20 p-4 min-h-[200px]">
             {thread.map((msg) => (
               <div
                 key={msg.id}
-                className={msg.senderId === currentUserId ? 'text-right' : ''}
+                className={msg.isSystem ? '' : msg.senderId === currentUserId ? 'text-right' : ''}
               >
                 <span className="text-xs text-muted-foreground">
-                  {msg.sender.firstName} {msg.sender.lastName}
+                  {msg.isSystem ? driveParkTitle : [msg.sender?.firstName, msg.sender?.lastName].filter(Boolean).join(' ') || ''}
                 </span>
-                <p className="mt-0.5 rounded-lg bg-background px-3 py-2 text-sm inline-block max-w-[85%] text-left">
+                <p className={`mt-0.5 rounded-lg px-3 py-2 text-sm inline-block max-w-[85%] text-left ${msg.isSystem ? 'bg-primary/10 border border-primary/20' : 'bg-background'}`}>
                   {msg.body}
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -123,6 +126,7 @@ export default function MessagesPage() {
               </div>
             ))}
           </div>
+          {!isDrivePark && (
           <form onSubmit={sendMessage} className="mt-4 flex gap-2">
             <input
               type="text"
@@ -140,13 +144,12 @@ export default function MessagesPage() {
               {t('send')}
             </button>
           </form>
+          )}
         </div>
       ) : (
         <div className="mt-6 space-y-2">
           {conversations.length === 0 ? (
-            <p className="text-muted-foreground">
-              No conversations yet. Book a trip to start messaging your host or guest.
-            </p>
+            <p className="text-muted-foreground">{t('noConversations')}</p>
           ) : (
             conversations.map((c) => (
               <Link
@@ -154,9 +157,9 @@ export default function MessagesPage() {
                 href={`/${locale}/messages?bookingId=${c.bookingId}`}
                 className="block rounded-lg border border-border bg-background p-4 hover:bg-muted/30"
               >
-                <p className="font-medium">{c.listing.title}</p>
+                <p className="font-medium">{c.drivepark ? driveParkTitle : c.listing.title}</p>
                 <p className="text-sm text-muted-foreground">
-                  {c.otherUser?.firstName} {c.otherUser?.lastName} · {c.status}
+                  {c.drivepark ? t('driveParkDescription') : `${c.otherUser?.firstName ?? ''} ${c.otherUser?.lastName ?? ''} · ${c.status}`.trim()}
                 </p>
                 {c.lastMessage && (
                   <p className="mt-1 text-sm truncate text-muted-foreground">

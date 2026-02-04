@@ -34,7 +34,10 @@ const apiRoutes = [
 const frontendRoutes = [
   { path: '/', accepted: [200, 307] },
   ...LOCALES.map((locale) => ({ path: `/${locale}`, accepted: [200] })),
-  ...LOCALES.map((locale) => ({ path: `/${locale}/listings`, accepted: [200] })),
+  ...LOCALES.map((locale) => ({ path: `/${locale}/listings`, accepted: [200, 302] })),
+  ...LOCALES.map((locale) => ({ path: `/${locale}/listings/location`, accepted: [200] })),
+  ...LOCALES.map((locale) => ({ path: `/${locale}/listings/experience`, accepted: [200] })),
+  ...LOCALES.map((locale) => ({ path: `/${locale}/listings/chauffeur`, accepted: [200] })),
   ...LOCALES.map((locale) => ({ path: `/${locale}/listings/${FAKE_ID}`, accepted: [200, 404] })),
   ...LOCALES.map((locale) => ({ path: `/${locale}/listings/${FAKE_ID}/checkout`, accepted: [200, 404] })),
   ...LOCALES.map((locale) => ({ path: `/${locale}/bookings`, accepted: [200] })),

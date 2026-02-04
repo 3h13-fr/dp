@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
+import { IsEmail, IsString, MinLength, MaxLength, IsOptional } from 'class-validator';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { User } from 'database';
@@ -31,9 +31,56 @@ export class RegisterDto {
   lastName?: string;
 }
 
+export class SendCodeDto {
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  locale?: string;
+}
+
+export class VerifyCodeDto {
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsString()
+  @MinLength(6)
+  @MaxLength(6)
+  code: string;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private auth: AuthService) {}
+
+  @Post('send-code')
+  async sendCode(@Body() dto: SendCodeDto) {
+    return this.auth.sendCode({
+      email: dto.email,
+      phone: dto.phone,
+      locale: dto.locale,
+    });
+  }
+
+  @Post('verify-code')
+  async verifyCode(@Body() dto: VerifyCodeDto) {
+    return this.auth.verifyCode({
+      email: dto.email,
+      phone: dto.phone,
+      code: dto.code,
+    });
+  }
 
   @Post('login')
   async login(@Body() dto: LoginDto) {
