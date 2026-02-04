@@ -1,0 +1,266 @@
+// Mobility platform — source of truth
+// PostgreSQL + PostGIS for geo (extensions enabled in migration)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ——— Roles & Auth ———
+enum Role {
+  CLIENT
+  HOST
+  DRIVER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  role          Role      @default(CLIENT)
+  firstName     String?
+  lastName      String?
+  avatarUrl     String?
+  phone         String?
+  preferredLang String    @default("en")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  listings      Listing[]
+  bookingsAsGuest   Booking[] @relation("GuestBookings")
+  bookingsAsHost    Booking[] @relation("HostBookings")
+  reviewsWritten    Review[]  @relation("AuthorReviews")
+  reviewsReceived   Review[]  @relation("SubjectReviews")
+  messagesSent      Message[] @relation("SenderMessages")
+  messagesReceived  Message[] @relation("ReceiverMessages")
+  kycVerifications  KycVerification[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+}
+
+// ——— KYC / Trust ———
+model KycVerification {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    String   // PENDING, APPROVED, REJECTED
+  idDocUrl  String?
+  licenseUrl String?
+  verifiedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ——— Listings (voiture, expérience, chauffeur) ———
+enum ListingType {
+  CAR_RENTAL      // self-drive
+  MOTORIZED_EXPERIENCE
+  CHAUFFEUR
+}
+
+model Listing {
+  id          String      @id @default(cuid())
+  type        ListingType
+  hostId      String
+  host        User        @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  title       String
+  slug        String      @unique
+  description String?
+  status      String      @default("DRAFT") // DRAFT, PENDING, ACTIVE, SUSPENDED
+
+  // Geo (PostGIS: use raw SQL or Prisma extension for point)
+  latitude    Float?
+  longitude   Float?
+  city        String?
+  country     String?
+  address     String?
+
+  // Pricing
+  pricePerDay Decimal?    @db.Decimal(10, 2)
+  currency    String      @default("EUR")
+  caution     Decimal?    @db.Decimal(10, 2)
+  cancellationPolicy String?
+
+  // Car-specific
+  category    String?     // economy, sedan, suv...
+  transmission String?    // manual, automatic
+  fuelType    String?     // petrol, electric, hybrid...
+  seats       Int?
+  options     Json?       // extra options, insurance options
+
+  // Experience / Chauffeur
+  durationMinutes Int?
+  maxParticipants Int?
+  driverId    String?     // for chauffeur
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  photos      ListingPhoto[]
+  availabilities ListingAvailability[]
+  bookings    Booking[]
+  reviews     Review[]
+}
+
+model ListingPhoto {
+  id        String   @id @default(cuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  url       String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model ListingAvailability {
+  id        String   @id @default(cuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  available Boolean  @default(true)
+  priceOverride Decimal? @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([listingId, date])
+  @@index([listingId, date])
+}
+
+// ——— Bookings ———
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  IN_PROGRESS
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  listingId     String
+  listing       Listing       @relation(fields: [listingId], references: [id])
+  guestId       String
+  guest         User          @relation("GuestBookings", fields: [guestId], references: [id])
+  hostId        String
+  host          User          @relation("HostBookings", fields: [hostId], references: [id])
+
+  status        BookingStatus @default(PENDING)
+  startAt       DateTime
+  endAt         DateTime
+  totalAmount   Decimal       @db.Decimal(10, 2)
+  currency      String        @default("EUR")
+  cautionAmount Decimal?      @db.Decimal(10, 2)
+  options       Json?         // selected options, insurance
+
+  checkInAt     DateTime?
+  checkOutAt    DateTime?
+  notes         String?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  payments      Payment[]
+  messages      Message[]
+  review        Review?
+}
+
+// ——— Payments (Stripe-oriented) ———
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  bookingId     String
+  booking       Booking      @relation(fields: [bookingId], references: [id])
+  amount        Decimal      @db.Decimal(10, 2)
+  currency      String       @default("EUR")
+  status        PaymentStatus @default(PENDING)
+  stripePaymentId String?    @unique
+  type          String       // booking, caution, extra, refund
+  metadata      Json?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([bookingId])
+  @@index([stripePaymentId])
+}
+
+// ——— Messaging ———
+model Message {
+  id        String   @id @default(cuid())
+  bookingId String?
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  senderId  String
+  sender    User     @relation("SenderMessages", fields: [senderId], references: [id])
+  receiverId String
+  receiver  User     @relation("ReceiverMessages", fields: [receiverId], references: [id])
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([bookingId])
+  @@index([senderId, receiverId])
+}
+
+// ——— Reviews ———
+model Review {
+  id        String   @id @default(cuid())
+  bookingId String   @unique
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  authorId  String
+  author    User     @relation("AuthorReviews", fields: [authorId], references: [id])
+  subjectId String   // host or guest being reviewed
+  subject   User     @relation("SubjectReviews", fields: [subjectId], references: [id])
+  rating    Int      // 1-5
+  comment   String?
+  hostReply String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listingId])
+  @@index([subjectId])
+}
+
+// ——— Notifications ———
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String?
+  data      Json?    // deep link, etc.
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ——— Admin audit ———
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  resource   String
+  resourceId String?
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([resource, resourceId])
+  @@index([createdAt])
+}

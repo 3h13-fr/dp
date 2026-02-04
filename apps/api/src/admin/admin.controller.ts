@@ -1,0 +1,66 @@
+import { Body, Controller, Get, Patch, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { AdminService } from './admin.service';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Role } from 'database';
+import type { User } from 'database';
+import type { Request } from 'express';
+
+@Controller('admin')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@Roles(Role.ADMIN)
+export class AdminController {
+  constructor(private admin: AdminService) {}
+
+  @Get('users')
+  getUsers(
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('role') role?: Role,
+  ): Promise<{ items: unknown[]; total: number }> {
+    return this.admin.getUsers(
+      limit ? parseInt(limit, 10) : undefined,
+      offset ? parseInt(offset, 10) : undefined,
+      role,
+    );
+  }
+
+  @Get('listings')
+  getListings(
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('status') status?: string,
+  ): Promise<{ items: unknown[]; total: number }> {
+    return this.admin.getListingsForModeration(
+      limit ? parseInt(limit, 10) : undefined,
+      offset ? parseInt(offset, 10) : undefined,
+      status,
+    );
+  }
+
+  @Patch('listings/:id/status')
+  updateListingStatus(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: { status: string },
+    @Req() req: Request,
+  ): Promise<unknown> {
+    const ip = req.ip ?? req.socket?.remoteAddress ?? undefined;
+    return this.admin.updateListingStatus(id, body.status, user.id, ip);
+  }
+
+  @Get('audit-logs')
+  getAuditLogs(
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('resource') resource?: string,
+  ): Promise<{ items: unknown[]; total: number }> {
+    return this.admin.getAuditLogs(
+      limit ? parseInt(limit, 10) : undefined,
+      offset ? parseInt(offset, 10) : undefined,
+      resource,
+    );
+  }
+}

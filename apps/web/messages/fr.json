@@ -1,0 +1,23 @@
+{
+  "common": {
+    "search": "Rechercher",
+    "login": "Connexion",
+    "signup": "Inscription",
+    "loading": "Chargement..."
+  },
+  "home": {
+    "title": "Plateforme de mobilité",
+    "subtitle": "Louez une voiture, réservez une expérience ou un chauffeur.",
+    "searchPlaceholder": "Ville, aéroport ou adresse",
+    "dates": "Dates",
+    "guests": "Voyageurs",
+    "searchButton": "Rechercher"
+  },
+  "nav": {
+    "listings": "Annonces",
+    "myBookings": "Mes voyages",
+    "messages": "Messages",
+    "account": "Compte",
+    "logout": "Déconnexion"
+  }
+}
