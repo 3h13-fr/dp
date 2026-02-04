@@ -3,7 +3,11 @@
     "search": "Rechercher",
     "login": "Connexion",
     "signup": "Inscription",
-    "loading": "Chargement..."
+    "loading": "Chargement...",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "back": "Retour",
+    "error": "Erreur"
   },
   "home": {
     "title": "Plateforme de mobilité",
@@ -18,6 +22,67 @@
     "myBookings": "Mes voyages",
     "messages": "Messages",
     "account": "Compte",
-    "logout": "Déconnexion"
+    "logout": "Déconnexion",
+    "host": "Espace partenaire",
+    "admin": "Admin"
+  },
+  "listing": {
+    "book": "Réserver",
+    "perDay": " / jour",
+    "noImage": "Pas d'image",
+    "host": "Hôte"
+  },
+  "listings": {
+    "title": "Annonces",
+    "found": "{count} annonce(s) trouvée(s)",
+    "noResults": "Aucune annonce. Essayez une autre recherche."
+  },
+  "checkout": {
+    "title": "Réservation",
+    "listing": "Annonce",
+    "startDate": "Date de début",
+    "endDate": "Date de fin",
+    "continueToPayment": "Continuer vers le paiement",
+    "creating": "Création...",
+    "loginRequired": "Vous devez être connecté pour réserver. Montant et caution s'afficheront à l'étape suivante."
+  },
+  "booking": {
+    "title": "Réservation",
+    "hostLabel": "Hôte",
+    "status": "Statut",
+    "dates": "Dates",
+    "total": "Total",
+    "caution": "Caution",
+    "payNow": "Payer maintenant",
+    "cancelBooking": "Annuler la réservation",
+    "cancelling": "Annulation...",
+    "cancelConfirm": "Annuler cette réservation ? Un remboursement sera effectué si déjà payé.",
+    "myTrips": "Mes voyages",
+    "message": "Message",
+    "refundInfo": "Un remboursement sera effectué si la réservation était payée.",
+    "reportIssue": "Signaler un problème",
+    "reportIssueSent": "Votre signalement a été envoyé. Le support vous recontactera.",
+    "common": { "loading": "Chargement..." }
+  },
+  "messages": {
+    "title": "Messages",
+    "allConversations": "Toutes les conversations",
+    "noConversations": "Aucune conversation. Réservez un voyage pour échanger avec votre hôte ou voyageur.",
+    "with": "avec",
+    "typePlaceholder": "Écrivez un message...",
+    "send": "Envoyer"
+  },
+  "login": {
+    "title": "Connexion",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "signIn": "Se connecter",
+    "demoHint": "Démo : mot de passe \"demo\" avec un e-mail existant (rôle admin pour /admin).",
+    "apiUnreachable": "Impossible de joindre l'API. Démarrer avec : cd /Applications/DP && pnpm run dev:api"
+  },
+  "errors": {
+    "generic": "Une erreur s'est produite",
+    "loginFailed": "Échec de connexion",
+    "noToken": "Aucun jeton reçu"
   }
 }

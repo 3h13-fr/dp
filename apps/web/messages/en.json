@@ -3,7 +3,11 @@
     "search": "Search",
     "login": "Log in",
     "signup": "Sign up",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back",
+    "error": "Error"
   },
   "home": {
     "title": "Mobility Platform",
@@ -18,6 +22,67 @@
     "myBookings": "My trips",
     "messages": "Messages",
     "account": "Account",
-    "logout": "Log out"
+    "logout": "Log out",
+    "host": "Host dashboard",
+    "admin": "Admin"
+  },
+  "listing": {
+    "book": "Book",
+    "perDay": "/ day",
+    "noImage": "No image",
+    "host": "Host"
+  },
+  "listings": {
+    "title": "Listings",
+    "found": "{count} listing(s) found",
+    "noResults": "No listings found. Try another search."
+  },
+  "checkout": {
+    "title": "Checkout",
+    "listing": "Listing",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "continueToPayment": "Continue to payment",
+    "creating": "Creating...",
+    "loginRequired": "You must be logged in to book. Total and caution will be shown on the next step."
+  },
+  "booking": {
+    "title": "Booking",
+    "hostLabel": "Host",
+    "status": "Status",
+    "dates": "Dates",
+    "total": "Total",
+    "caution": "Caution",
+    "payNow": "Pay now",
+    "cancelBooking": "Cancel booking",
+    "cancelling": "Cancelling...",
+    "cancelConfirm": "Cancel this booking? A refund will be issued if already paid.",
+    "myTrips": "My trips",
+    "message": "Message",
+    "refundInfo": "A refund will be issued if the booking was paid.",
+    "reportIssue": "Report an issue",
+    "reportIssueSent": "Your report has been sent. Support will follow up.",
+    "common": { "loading": "Loading..." }
+  },
+  "messages": {
+    "title": "Messages",
+    "allConversations": "All conversations",
+    "noConversations": "No conversations yet. Book a trip to start messaging your host or guest.",
+    "with": "with",
+    "typePlaceholder": "Type a message...",
+    "send": "Send"
+  },
+  "login": {
+    "title": "Log in",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "demoHint": "Demo: use password \"demo\" with any existing user email (admin role for /admin).",
+    "apiUnreachable": "Cannot reach the API. Start it with: cd /Applications/DP && pnpm run dev:api"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "loginFailed": "Login failed",
+    "noToken": "No token received"
   }
 }

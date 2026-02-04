@@ -6,18 +6,23 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
+  reporter: [['list'], ['html']],
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
     trace: 'on-first-retry',
+    actionTimeout: 15_000,
+    navigationTimeout: 30_000,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  webServer: process.env.CI
-    ? undefined
-    : {
-        command: 'pnpm dev',
-        url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
-        reuseExistingServer: true,
-        timeout: 120_000,
-      },
+  webServer:
+    process.env.CI || process.env.SKIP_WEBSERVER
+      ? undefined
+      : {
+          command: 'pnpm dev',
+          url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+          reuseExistingServer: true,
+          timeout: 120_000,
+        },
 });

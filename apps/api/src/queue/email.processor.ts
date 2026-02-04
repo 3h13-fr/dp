@@ -6,25 +6,51 @@ import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import { EmailJobData } from './queue.service';
 
+const fallbackLocale = 'en';
+
 function renderBookingConfirmation(locale: string, variables: Record<string, string> | undefined): { subject: string; html: string } {
+  const lang = locale === 'fr' ? 'fr' : fallbackLocale;
   const bookingId = variables?.bookingId ?? '';
-  if (locale === 'fr') {
+  if (lang === 'fr') {
     return {
       subject: 'Réservation confirmée',
-      html: `
-        <p>Votre réservation a bien été confirmée.</p>
-        <p>Référence : <strong>${bookingId}</strong></p>
-        <p>Vous pouvez consulter le détail dans votre espace réservations.</p>
-      `.trim(),
+      html: `<p>Votre réservation a bien été confirmée.</p><p>Référence : <strong>${bookingId}</strong></p><p>Consultez le détail dans vos réservations.</p>`,
     };
   }
   return {
     subject: 'Booking confirmed',
-    html: `
-      <p>Your booking has been confirmed.</p>
-      <p>Reference: <strong>${bookingId}</strong></p>
-      <p>You can view the details in your bookings area.</p>
-    `.trim(),
+    html: `<p>Your booking has been confirmed.</p><p>Reference: <strong>${bookingId}</strong></p><p>View details in your trips.</p>`,
+  };
+}
+
+function renderBookingCancelled(locale: string, variables: Record<string, string> | undefined): { subject: string; html: string } {
+  const lang = locale === 'fr' ? 'fr' : fallbackLocale;
+  const bookingId = variables?.bookingId ?? '';
+  if (lang === 'fr') {
+    return {
+      subject: 'Réservation annulée',
+      html: `<p>Votre réservation a été annulée.</p><p>Référence : <strong>${bookingId}</strong></p><p>Un remboursement sera effectué si la réservation avait été payée.</p>`,
+    };
+  }
+  return {
+    subject: 'Booking cancelled',
+    html: `<p>Your booking has been cancelled.</p><p>Reference: <strong>${bookingId}</strong></p><p>A refund will be issued if the booking was paid.</p>`,
+  };
+}
+
+function renderNewMessage(locale: string, variables: Record<string, string> | undefined): { subject: string; html: string } {
+  const lang = locale === 'fr' ? 'fr' : fallbackLocale;
+  const senderName = variables?.senderName ?? 'Someone';
+  const preview = (variables?.bodyPreview ?? '').slice(0, 80);
+  if (lang === 'fr') {
+    return {
+      subject: `Nouveau message de ${senderName}`,
+      html: `<p>Vous avez reçu un nouveau message de ${senderName}.</p><p>${preview ? `« ${preview}${preview.length >= 80 ? '…' : ''} »` : ''}</p><p>Répondez depuis l'onglet Messages de votre compte.</p>`,
+    };
+  }
+  return {
+    subject: `New message from ${senderName}`,
+    html: `<p>You have a new message from ${senderName}.</p><p>${preview ? `"${preview}${preview.length >= 80 ? '…' : ''}"` : ''}</p><p>Reply from the Messages section of your account.</p>`,
   };
 }
 
@@ -65,6 +91,14 @@ export class EmailProcessor extends WorkerHost {
 
     if (template === 'booking-confirmation') {
       const rendered = renderBookingConfirmation(effectiveLocale, variables);
+      subject = rendered.subject;
+      html = rendered.html;
+    } else if (template === 'booking-cancelled') {
+      const rendered = renderBookingCancelled(effectiveLocale, variables);
+      subject = rendered.subject;
+      html = rendered.html;
+    } else if (template === 'new-message') {
+      const rendered = renderNewMessage(effectiveLocale, variables);
       subject = rendered.subject;
       html = rendered.html;
     } else {

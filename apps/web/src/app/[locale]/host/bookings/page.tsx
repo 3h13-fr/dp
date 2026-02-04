@@ -65,11 +65,12 @@ export default function HostBookingsPage() {
                   </td>
                   <td className="p-3">{b.status}</td>
                   <td className="p-3">
-                    <Link
-                      href={`/${locale}/bookings/${b.id}`}
-                      className="font-medium text-primary hover:underline"
-                    >
+                    <Link href={`/${locale}/bookings/${b.id}`} className="font-medium text-primary hover:underline">
                       View
+                    </Link>
+                    {' · '}
+                    <Link href={`/${locale}/messages?bookingId=${b.id}`} className="font-medium text-primary hover:underline">
+                      Message
                     </Link>
                   </td>
                 </tr>

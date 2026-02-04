@@ -33,7 +33,7 @@ export class QueueService {
     return this.notificationQueue.add('push', data, opts);
   }
 
-  /** Example: enqueue booking confirmation email */
+  /** Booking confirmation email (locale = guest preferredLang, fallback EN). */
   async enqueueBookingConfirmationEmail(bookingId: string, guestEmail: string, locale = 'en') {
     return this.addEmail({
       to: guestEmail,
@@ -44,7 +44,29 @@ export class QueueService {
     });
   }
 
-  /** Example: enqueue in-app notification for new message */
+  /** Booking cancelled email (refund info). */
+  async enqueueBookingCancelledEmail(bookingId: string, guestEmail: string, locale = 'en') {
+    return this.addEmail({
+      to: guestEmail,
+      subject: locale === 'fr' ? 'Réservation annulée' : 'Booking cancelled',
+      template: 'booking-cancelled',
+      locale,
+      variables: { bookingId },
+    });
+  }
+
+  /** New message notification email (receiver's locale). */
+  async enqueueNewMessageEmail(toEmail: string, senderName: string, bodyPreview: string, locale = 'en') {
+    return this.addEmail({
+      to: toEmail,
+      subject: locale === 'fr' ? `Nouveau message de ${senderName}` : `New message from ${senderName}`,
+      template: 'new-message',
+      locale,
+      variables: { senderName, bodyPreview },
+    });
+  }
+
+  /** In-app notification (e.g. new message). */
   async enqueueNotification(userId: string, type: string, title: string, body?: string, data?: Record<string, unknown>) {
     return this.addNotification({ userId, type, title, body, data });
   }

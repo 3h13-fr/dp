@@ -1,8 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { QueueService } from '../queue/queue.service';
 import { AvailabilityService } from '../availability/availability.service';
+import { PaymentsService } from '../payments/payments.service';
 import { BookingStatus } from 'database';
 import { Decimal } from 'database';
 
@@ -13,6 +14,7 @@ export class BookingsService {
     private events: EventsGateway,
     private queue: QueueService,
     private availability: AvailabilityService,
+    private payments: PaymentsService,
   ) {}
 
   async findForGuest(guestId: string, limit = 20, offset = 0): Promise<{ items: unknown[]; total: number }> {
@@ -50,7 +52,7 @@ export class BookingsService {
   }
 
   async findOne(id: string): Promise<unknown> {
-    return this.prisma.booking.findUniqueOrThrow({
+    const booking = await this.prisma.booking.findUnique({
       where: { id },
       include: {
         listing: true,
@@ -58,6 +60,8 @@ export class BookingsService {
         host: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+    if (!booking) throw new NotFoundException('Booking not found');
+    return booking;
   }
 
   /** Create a new booking (guest only). Total computed from listing price × days. Rejects on overlap or unavailable dates. */
@@ -92,33 +96,35 @@ export class BookingsService {
     const totalAmount = pricePerDay * days;
     const cautionAmount = listing.caution?.toNumber() ?? 0;
 
-    return this.prisma.booking.create({
-      data: {
-        listingId: data.listingId,
-        guestId,
-        hostId: listing.hostId,
-        status: BookingStatus.PENDING,
-        startAt,
-        endAt,
-        totalAmount: new Decimal(totalAmount),
-        currency: listing.currency,
-        cautionAmount: cautionAmount ? new Decimal(cautionAmount) : null,
-        options: (data.options ?? undefined) as import('database').Prisma.InputJsonValue | undefined,
-      },
-      include: {
-        listing: { select: { id: true, title: true, type: true } },
-        host: { select: { id: true, firstName: true, lastName: true } },
-      },
-    });
+    return this.prisma.$transaction(async (tx) =>
+      tx.booking.create({
+        data: {
+          listingId: data.listingId,
+          guestId,
+          hostId: listing.hostId,
+          status: BookingStatus.PENDING,
+          startAt,
+          endAt,
+          totalAmount: new Decimal(totalAmount),
+          currency: listing.currency,
+          cautionAmount: cautionAmount ? new Decimal(cautionAmount) : null,
+          options: (data.options ?? undefined) as import('database').Prisma.InputJsonValue | undefined,
+        },
+        include: {
+          listing: { select: { id: true, title: true, type: true } },
+          host: { select: { id: true, firstName: true, lastName: true } },
+        },
+      }),
+    );
   }
 
-  /** Update booking status and emit to WebSocket room */
+  /** Update booking status and emit to WebSocket room. Throws NotFoundException if booking missing or not guest/host. */
   async updateStatus(bookingId: string, status: BookingStatus, actorId: string): Promise<unknown> {
     const booking = await this.prisma.booking.findFirst({
       where: { id: bookingId },
     });
-    if (!booking) return null;
-    if (booking.guestId !== actorId && booking.hostId !== actorId) return null;
+    if (!booking) throw new NotFoundException('Booking not found');
+    if (booking.guestId !== actorId && booking.hostId !== actorId) throw new NotFoundException('Booking not found');
 
     const updated = await this.prisma.booking.update({
       where: { id: bookingId },
@@ -130,6 +136,7 @@ export class BookingsService {
       },
     });
     this.events.emitBookingStatus(bookingId, status, { booking: updated });
+
     if (status === BookingStatus.CONFIRMED && updated.guest?.email) {
       await this.queue.enqueueBookingConfirmationEmail(
         bookingId,
@@ -137,6 +144,46 @@ export class BookingsService {
         'en',
       );
     }
+
+    if (status === BookingStatus.CANCELLED) {
+      const bookingPayment = await this.prisma.payment.findFirst({
+        where: { bookingId, type: 'booking', status: 'SUCCEEDED' },
+      });
+      if (bookingPayment?.id) {
+        try {
+          await this.payments.refund(bookingPayment.id);
+        } catch {
+          // Booking already set to CANCELLED; log refund failure
+        }
+      }
+      const guestEmail = updated.guest?.email;
+      if (guestEmail) {
+        const locale = (updated.guest as { preferredLang?: string })?.preferredLang ?? 'en';
+        await this.queue.enqueueBookingCancelledEmail(bookingId, guestEmail, locale);
+      }
+    }
+
     return updated;
+  }
+
+  /** Report an issue / dispute for a booking (guest or host). Logged in audit for admin. */
+  async reportIssue(bookingId: string, userId: string, message: string): Promise<{ received: boolean }> {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId },
+      include: { guest: { select: { email: true } }, host: { select: { email: true } } },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+    if (booking.guestId !== userId && booking.hostId !== userId) throw new NotFoundException('Booking not found');
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'report_issue',
+        resource: 'Booking',
+        resourceId: bookingId,
+        metadata: { message, guestId: booking.guestId, hostId: booking.hostId } as object,
+      },
+    });
+    return { received: true };
   }
 }

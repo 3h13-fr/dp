@@ -3,13 +3,15 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { apiFetch, getToken } from '@/lib/api';
 
 export default function CheckoutPage() {
   const params = useParams();
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations('checkout');
+  const tErrors = useTranslations('errors');
   const listingId = String(params.id);
   const [startAt, setStartAt] = useState('');
   const [endAt, setEndAt] = useState('');
@@ -34,10 +36,10 @@ export default function CheckoutPage() {
         }),
       });
       const booking = await res.json();
-      if (!res.ok) throw new Error(booking.message ?? 'Failed to create booking');
+      if (!res.ok) throw new Error(booking.message ?? tErrors('loginFailed'));
       router.push(`/${locale}/bookings/${booking.id}/pay`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setError(err instanceof Error ? err.message : tErrors('generic'));
     } finally {
       setLoading(false);
     }
@@ -45,13 +47,13 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-8">
-      <h1 className="text-2xl font-bold">Checkout</h1>
+      <h1 className="text-2xl font-bold">{t('title')}</h1>
       <p className="mt-1 text-muted-foreground">
-        Listing: <Link href={`/${locale}/listings/${listingId}`} className="text-primary underline">{listingId}</Link>
+        {t('listing')}: <Link href={`/${locale}/listings/${listingId}`} className="text-primary underline">{listingId}</Link>
       </p>
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
         <div>
-          <label className="block text-sm font-medium">Start date</label>
+          <label className="block text-sm font-medium">{t('startDate')}</label>
           <input
             type="datetime-local"
             value={startAt}
@@ -61,7 +63,7 @@ export default function CheckoutPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium">End date</label>
+          <label className="block text-sm font-medium">{t('endDate')}</label>
           <input
             type="datetime-local"
             value={endAt}
@@ -76,11 +78,11 @@ export default function CheckoutPage() {
           disabled={loading}
           className="rounded-lg bg-primary py-3 font-medium text-primary-foreground disabled:opacity-50"
         >
-          {loading ? 'Creating...' : 'Continue to payment'}
+          {loading ? t('creating') : t('continueToPayment')}
         </button>
       </form>
       <p className="mt-4 text-sm text-muted-foreground">
-        You must be logged in to book. Total and caution will be shown on the next step.
+        {t('loginRequired')}
       </p>
     </div>
   );

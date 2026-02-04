@@ -21,7 +21,7 @@ type ListingItem = {
 export function ListingsGrid() {
   const locale = useLocale();
   const searchParams = useSearchParams();
-  const t = useTranslations('common');
+  const t = useTranslations();
   const q = searchParams.get('q') ?? '';
   const [items, setItems] = useState<ListingItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -46,13 +46,13 @@ export function ListingsGrid() {
   }, [q]);
 
   if (loading) {
-    return <p className="text-muted-foreground">{t('loading')}</p>;
+    return <p className="text-muted-foreground">{t('common.loading')}</p>;
   }
 
   if (items.length === 0) {
     return (
       <p className="py-8 text-muted-foreground">
-        No listings found. Try another search.
+        {t('listings.noResults')}
       </p>
     );
   }
@@ -60,7 +60,7 @@ export function ListingsGrid() {
   return (
     <>
       <p className="mb-4 text-sm text-muted-foreground">
-        {total} listing{total !== 1 ? 's' : ''} found
+        {t('listings.found', { count: total })}
       </p>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((listing) => {
@@ -85,7 +85,7 @@ export function ListingsGrid() {
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                    No image
+                    {t('listing.noImage')}
                   </div>
                 )}
               </div>
@@ -98,7 +98,7 @@ export function ListingsGrid() {
                 )}
                 {price != null && (
                   <p className="mt-2 font-medium">
-                    {price} {listing.currency ?? 'EUR'} / day
+                    {price} {listing.currency ?? 'EUR'} {t('listing.perDay')}
                   </p>
                 )}
               </div>
