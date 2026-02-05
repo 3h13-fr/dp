@@ -61,15 +61,257 @@ model OtpRequest {
 
 // ——— KYC / Trust ———
 model KycVerification {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status        String    // PENDING, PENDING_REVIEW, APPROVED, REJECTED
+  firstName     String?
+  lastName      String?
+  dateOfBirth   DateTime? @db.Date
+  nationality   String?
+  documentType  String?   // id_card | passport
+  idDocUrl      String?
+  idDocBackUrl  String?
+  licenseUrl    String?
+  reviewReason  String?   // DOUBTFUL | MISMATCH | ILLEGIBLE | SUSPECTED_FRAUD
+  ocrPayload    Json?
+  verifiedAt    DateTime?
+  reviewedBy    String?
+  rejectionReason String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ——— Geographic (source of truth for SEO) ———
+model Country {
   id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status    String   // PENDING, APPROVED, REJECTED
-  idDocUrl  String?
-  licenseUrl String?
-  verifiedAt DateTime?
+  code      String   @unique // ISO 3166-1 (FR, DE, ES...)
+  slug      String   @unique
+  name      Json     // {en: "France", fr: "France"}
+  mediaUrl  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  regions   Region[]
+  cities    City[]
+}
+
+model Region {
+  id        String   @id @default(cuid())
+  countryId String
+  country   Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  slug      String
+  name      Json
+  mediaUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cities    City[]
+
+  @@unique([countryId, slug])
+  @@index([countryId])
+}
+
+model City {
+  id           String   @id @default(cuid())
+  regionId     String?
+  region       Region?  @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  countryId    String
+  country      Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  slug         String
+  name         Json
+  latitude     Float?
+  longitude    Float?
+  seoPriority  Int      @default(0) // 0 = auto, >0 = strategic city (override possible)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  listings     Listing[]
+
+  @@unique([countryId, slug])
+  @@index([countryId])
+  @@index([regionId])
+  @@index([seoPriority])
+}
+
+// ——— SEO templates & overrides ———
+model SeoTemplate {
+  id       String   @id @default(cuid())
+  vertical String   // location | experience | ride
+  scope    String   // city | region | country | listing
+  key      String   // title | description | h1
+  template String   @db.Text // "Louer une voiture à {{cityName}} | DrivePark"
+  variants Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([vertical, scope, key])
+}
+
+model SeoOverride {
+  id         String   @id @default(cuid())
+  entityType String   // city | region | country
+  entityId   String
+  vertical   String
+  key        String   // title | description
+  value      String   @db.Text
+
+  @@unique([entityType, entityId, vertical, key])
+  @@index([entityType, entityId])
+}
+
+model MediaAsset {
+  id         String   @id @default(cuid())
+  entityType String   // city | region | country | category
+  entityId   String?
+  vertical   String?  // null = generic
+  url        String
+  type       String   // image | hero
+
+  @@index([entityType, entityId])
+}
+
+// ——— Vehicle Identity (make/model, VIN, specs) ———
+enum FuelType {
+  petrol
+  diesel
+  electric
+  hybrid
+  lpg
+  other
+}
+
+enum TransmissionType {
+  manual
+  automatic
+  semi_automatic
+  cvt
+  other
+}
+
+enum DriveType {
+  fwd
+  rwd
+  awd
+  other
+}
+
+enum ReferenceStatus {
+  verified
+  unverified
+}
+
+enum SpecSource {
+  system
+  host_confirmed
+  host_manual
+}
+
+model Make {
+  id             String           @id @default(cuid())
+  name           String
+  slug           String           @unique
+  externalSource String?
+  externalId     String?
+  status         ReferenceStatus   @default(verified)
+
+  @@index([slug])
+  @@index([status])
+  aliases   MakeAlias[]
+  models    Model[]
+  vehicles  Vehicle[]
+}
+
+model MakeAlias {
+  id              String   @id @default(cuid())
+  makeId          String
+  make            Make     @relation(fields: [makeId], references: [id], onDelete: Cascade)
+  alias           String
+  normalizedAlias String
+
+  @@unique([makeId, normalizedAlias])
+  @@index([normalizedAlias])
+}
+
+model Model {
+  id             String           @id @default(cuid())
+  makeId         String
+  make           Make             @relation(fields: [makeId], references: [id], onDelete: Cascade)
+  name           String
+  slug           String
+  status         ReferenceStatus   @default(verified)
+  externalSource String?
+  externalId     String?
+
+  @@unique([makeId, slug])
+  @@index([makeId])
+  @@index([status])
+  aliases  ModelAlias[]
+  vehicles Vehicle[]
+}
+
+model ModelAlias {
+  id              String @id @default(cuid())
+  modelId         String
+  model           Model  @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  alias           String
+  normalizedAlias String
+
+  @@unique([modelId, normalizedAlias])
+  @@index([normalizedAlias])
+}
+
+model Vehicle {
+  id                String             @id @default(cuid())
+  vin               String             @unique
+  makeId            String
+  make              Make               @relation(fields: [makeId], references: [id], onDelete: Restrict)
+  modelId           String
+  model             Model              @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  modelYear         Int
+  trimLabel         String?
+  fuelType          FuelType?
+  transmissionType  TransmissionType?
+  driveType         DriveType?
+  topSpeedKmh       Int?
+  zeroTo100S        Decimal?           @db.Decimal(5, 2)
+  powerKw           Decimal?           @db.Decimal(6, 2)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([vin])
+  @@index([makeId])
+  @@index([modelId])
+  specMeta   VehicleSpecMeta[]
+  fieldAudit VehicleFieldAudit[]
+  listings   Listing[]
+}
+
+model VehicleSpecMeta {
+  id         String    @id @default(cuid())
+  vehicleId  String
+  vehicle    Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  specKey    String    // power_kw, fuel_type, top_speed_kmh, zero_to_100_s, transmission_type, drive_type
+  source     SpecSource
+  confidence Decimal   @db.Decimal(3, 2) // 0-1
+  needsReview Boolean  @default(false)
+  updatedAt  DateTime @updatedAt
+
+  @@unique([vehicleId, specKey])
+  @@index([vehicleId])
+}
+
+model VehicleFieldAudit {
+  id        String   @id @default(cuid())
+  vehicleId String
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  fieldName String
+  oldValue  String?  @db.Text
+  newValue  String?  @db.Text
+  source    String?
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([vehicleId])
+  @@index([fieldName])
+  @@index([createdAt])
 }
 
 // ——— Listings (voiture, expérience, chauffeur) ———
@@ -84,15 +326,21 @@ model Listing {
   type        ListingType
   hostId      String
   host        User        @relation(fields: [hostId], references: [id], onDelete: Cascade)
-  title       String
+  title       String?     // legacy; when vehicleId set, use displayName
+  displayName String?     // canonical from vehicle (make model year trim)
   slug        String      @unique
   description String?
   status      String      @default("DRAFT") // DRAFT, PENDING, ACTIVE, SUSPENDED
 
+  vehicleId   String?
+  vehicle     Vehicle?    @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
   // Geo (PostGIS: use raw SQL or Prisma extension for point)
+  cityId      String?
+  cityRef     City?    @relation(fields: [cityId], references: [id], onDelete: SetNull)
   latitude    Float?
   longitude   Float?
-  city        String?
+  city        String?  // legacy fallback during migration
   country     String?
   address     String?
 
@@ -102,11 +350,13 @@ model Listing {
   caution     Decimal?    @db.Decimal(10, 2)
   cancellationPolicy String?
 
-  // Car-specific
+  // Car-specific / Listing config (seats, doors, luggage when vehicleId present)
   category    String?     // economy, sedan, suv...
-  transmission String?    // manual, automatic
-  fuelType    String?     // petrol, electric, hybrid...
+  transmission String?    // legacy; prefer vehicle.transmissionType
+  fuelType    String?     // legacy; prefer vehicle.fuelType
   seats       Int?
+  doors       Int?
+  luggage     Int?
   options     Json?       // extra options, insurance options
 
   // Experience / Chauffeur

@@ -8,8 +8,10 @@ import { clsx } from 'clsx';
 import { useEffect, useState } from 'react';
 import { getToken, clearToken } from '@/lib/api';
 import { SparkIcon } from '@/components/icons/SparkIcon';
+import { HeaderSearchBar } from '@/components/HeaderSearchBar';
+import { SearchBottomSheet } from '@/components/SearchBottomSheet';
 
-function NavMenuIcon({ name }: { name: 'key' | 'help' | 'headset' | 'lifebuoy' | 'login' | 'user' | 'heart' | 'car' | 'bell' | 'chat' | 'logout' | 'admin' }) {
+function NavMenuIcon({ name }: { name: 'key' | 'help' | 'headset' | 'lifebuoy' | 'login' | 'user' | 'heart' | 'car' | 'bell' | 'chat' | 'logout' }) {
   const icons = {
     key: (
       <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,17 +68,13 @@ function NavMenuIcon({ name }: { name: 'key' | 'help' | 'headset' | 'lifebuoy' |
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
       </svg>
     ),
-    admin: (
-      <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-      </svg>
-    ),
   };
   return icons[name];
 }
 
 export function Header() {
   const t = useTranslations('nav');
+  const tSearch = useTranslations('headerSearch');
   const pathname = usePathname();
   const router = useRouter();
   const locale = useLocale();
@@ -84,6 +82,13 @@ export function Header() {
   const [isLoggedIn, setLoggedIn] = useState(false);
   const [role, setRole] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchSheetOpen, setSearchSheetOpen] = useState(false);
+
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/d4d80e1e-130a-4236-9b97-782fd171848c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Header.tsx',message:'Header mounted',data:{pathname},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4'})}).catch(()=>{});
+  }, [pathname]);
+  // #endregion
 
   useEffect(() => {
     const token = getToken();
@@ -126,9 +131,9 @@ export function Header() {
   };
 
   const tabLinks = [
-    { href: '/listings/location', label: t('vehicles'), testId: 'nav-link-location' },
-    { href: '/listings/experience', label: t('experiences'), testId: 'nav-link-experience' },
-    { href: '/listings/chauffeur', label: t('chauffeur'), testId: 'nav-link-chauffeur' },
+    { href: '/location', label: t('vehicles'), testId: 'nav-link-location' },
+    { href: '/experience', label: t('experiences'), testId: 'nav-link-experience' },
+    { href: '/ride', label: t('ride'), testId: 'nav-link-ride' },
   ];
   const localePrefix = `/${locale}`;
   const isActive = (href: string) =>
@@ -176,12 +181,6 @@ export function Header() {
         <NavMenuIcon name="key" />
         {role === 'HOST' ? t('partnerDashboard') : t('rentMyVehicles')}
       </Link>
-      {isLoggedIn && (
-        <Link href={`${localePrefix}/admin`} className={menuItemClass} onClick={() => setMenuOpen(false)} data-testid="nav-admin-dashboard">
-          <NavMenuIcon name="admin" />
-          {t('adminDashboard')}
-        </Link>
-      )}
       {menuDivider}
       <Link href={`${localePrefix}/profil#assistance`} className={menuItemClass} onClick={() => setMenuOpen(false)}>
         <NavMenuIcon name="help" />
@@ -211,7 +210,8 @@ export function Header() {
   );
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-white">
+    <header className="sticky top-0 z-50 border-b border-border bg-white" data-testid="app-header">
+      {/* Row 1: Logo, nav tabs, user actions */}
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         <Link href={localePrefix} className="flex items-center gap-2 text-lg font-semibold text-black" aria-label="DrivePark" data-testid="header-logo">
           <SparkIcon className="h-6 w-6 shrink-0 text-black" aria-hidden />
@@ -235,6 +235,9 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <Link href={`${localePrefix}/host`} className="hidden text-sm font-medium text-neutral-700 hover:text-black md:inline-block">
+            {role === 'HOST' ? t('partnerDashboard') : t('rentMyVehicles')}
+          </Link>
           <Link href={`${localePrefix}/messages`} className="hidden rounded-full p-2 text-neutral-700 hover:bg-neutral-100 md:block" aria-label={t('messages')}>
             <NavMenuIcon name="chat" />
           </Link>
@@ -267,6 +270,35 @@ export function Header() {
           </div>
         </div>
       </div>
+
+      {/* Row 2: Search — desktop inline bar, mobile trigger opens bottom sheet */}
+      <div className="border-t border-neutral-100 bg-white">
+        <div className="mx-auto flex max-w-6xl justify-center px-4 py-3">
+          {/* Mobile: trigger bar that opens bottom sheet */}
+          <button
+            type="button"
+            onClick={() => setSearchSheetOpen(true)}
+            className="flex w-full flex-1 items-center gap-2 overflow-hidden rounded-ds-pill border border-[var(--color-gray-light)] bg-[var(--color-white)] px-4 py-2.5 text-left shadow-ds-search md:hidden"
+            aria-label={tSearch('searchTriggerLabel')}
+          >
+            <svg className="h-4 w-4 shrink-0 text-ds-gray" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span className="truncate text-sm text-ds-gray">{tSearch('searchTriggerLabel')}</span>
+          </button>
+          {/* Desktop: inline single-line search bar */}
+          <div className="hidden w-full max-w-3xl md:block">
+            <HeaderSearchBar />
+          </div>
+        </div>
+      </div>
+
+      <SearchBottomSheet open={searchSheetOpen} onClose={() => setSearchSheetOpen(false)}>
+        <HeaderSearchBar
+          variant="stacked"
+          onAfterSubmit={() => setSearchSheetOpen(false)}
+        />
+      </SearchBottomSheet>
     </header>
   );
 }

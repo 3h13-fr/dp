@@ -2,15 +2,20 @@
 
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { getToken } from '@/lib/api';
+import { getToken, apiFetch } from '@/lib/api';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export default function ProfilPage() {
   const t = useTranslations('profil');
+  const tKyc = useTranslations('kyc');
   const tCommon = useTranslations('common');
   const locale = useLocale();
+  const searchParams = useSearchParams();
+  const kycRequired = searchParams.get('kyc') === 'required';
   const [isLoggedIn, setLoggedIn] = useState(false);
   const [role, setRole] = useState<string | null>(null);
+  const [kycStatus, setKycStatus] = useState<string | null>(null);
   const prefix = `/${locale}`;
 
   useEffect(() => {
@@ -18,21 +23,21 @@ export default function ProfilPage() {
     setLoggedIn(!!token);
     if (!token) {
       setRole(null);
+      setKycStatus(null);
       return;
     }
     const stored = localStorage.getItem('user_role');
     if (stored) setRole(stored);
-    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch('/auth/me')
       .then((r) => (r.ok ? r.json() : null))
       .then((user) => {
         if (user?.role) {
           localStorage.setItem('user_role', user.role);
           setRole(user.role);
         } else if (!stored) setRole(null);
+        setKycStatus(user?.kycStatus ?? null);
       })
-      .catch(() => {});
+      .catch(() => setKycStatus(null));
   }, []);
 
   const linkClass = 'flex items-center gap-3 py-3 text-neutral-800 hover:text-black';
@@ -62,23 +67,38 @@ export default function ProfilPage() {
           </div>
         )}
 
+        {isLoggedIn && kycStatus !== 'APPROVED' && (
+          <section className="mt-6">
+            <div
+              className={`rounded-xl border p-6 ${
+                kycRequired
+                  ? 'border-amber-300 bg-amber-50'
+                  : 'border-neutral-200 bg-neutral-50'
+              }`}
+            >
+              {kycRequired && <p className="mb-2 font-medium text-amber-800">{tKyc('kycRequired')}</p>}
+              {kycStatus === 'PENDING' && <p className="text-neutral-700">{tKyc('statusPending')}</p>}
+              {kycStatus === 'PENDING_REVIEW' && <p className="text-neutral-700">{tKyc('statusPendingReview')}</p>}
+              {(!kycStatus || kycStatus === 'REJECTED') && (
+                <p className="text-neutral-700">{tKyc('verifyIdentity')}</p>
+              )}
+              {(kycStatus === 'PENDING' || kycStatus === 'PENDING_REVIEW') && (
+                <p className="mt-1 text-sm text-neutral-500">{tKyc('subtitle')}</p>
+              )}
+              {(!kycStatus || kycStatus === 'REJECTED' || kycRequired) && (
+                <Link
+                  href={`${prefix}/profil/kyc${kycRequired ? '?kyc=required' : ''}`}
+                  className="mt-4 block w-full rounded-lg bg-neutral-800 py-3 text-center font-medium text-white hover:bg-neutral-900"
+                >
+                  {tKyc('goToKyc')}
+                </Link>
+              )}
+            </div>
+          </section>
+        )}
+
         <section className="mt-8" id="owner">
           <h2 className={sectionTitle}>{t('owner')}</h2>
-          {isLoggedIn && (
-            <Link
-              href={`${prefix}/admin`}
-              className="mb-3 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 py-4 px-4 text-amber-800 hover:bg-amber-100"
-              data-testid="profil-admin-dashboard"
-            >
-              <svg className="h-6 w-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              <span className="font-medium">{t('accessAdminDashboard')}</span>
-              <svg className="ml-auto h-5 w-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
-          )}
           {isLoggedIn && role === 'HOST' && (
             <Link
               href={`${prefix}/host`}

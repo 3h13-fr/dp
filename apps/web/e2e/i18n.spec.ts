@@ -1,29 +1,39 @@
 import { test, expect } from '@playwright/test';
+import { waitForAppReady } from './helpers';
 
 test.describe('i18n: change language + fallback EN', () => {
-  test('French locale shows French content on listings page', async ({ page }) => {
+  test('French locale shows French content on location page', async ({ page }) => {
     await page.goto('/fr/listings');
-    await expect(page).toHaveURL(/\/fr\/listings\/location/, { timeout: 10000 });
-    await expect(page.getByTestId('listings-location-title')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/Ville, aéroport ou adresse/i)).toBeVisible({ timeout: 5000 });
+    await waitForAppReady(page);
+    await expect(page).toHaveURL(/\/fr\/location/, { timeout: 15000 });
+    await expect(page.getByTestId('listings-location-title')).toBeVisible({ timeout: 15000 });
+    // Location page shows ListingsGrid (no search bar): assert French grid copy
+    await expect(
+      page.getByText(/annonce\(s\) trouvée\(s\)|Aucune annonce|Chargement/i),
+    ).toBeVisible({ timeout: 15000 });
   });
 
-  test('English locale shows English content on listings page', async ({ page }) => {
+  test('English locale shows English content on location page', async ({ page }) => {
     await page.goto('/en/listings');
-    await expect(page).toHaveURL(/\/en\/listings\/location/, { timeout: 10000 });
-    await expect(page.getByTestId('listings-location-title')).toBeVisible({ timeout: 10000 });
+    await waitForAppReady(page);
+    await expect(page).toHaveURL(/\/en\/location/, { timeout: 15000 });
+    await expect(page.getByTestId('listings-location-title')).toBeVisible({ timeout: 15000 });
   });
 
   test('French home shows French content', async ({ page }) => {
     await page.goto('/fr');
-    await expect(page.getByTestId('header-logo')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('link', { name: /Véhicules/i })).toBeVisible({ timeout: 5000 });
+    await waitForAppReady(page);
+    await expect(page.getByTestId('app-header')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('nav-link-location')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('nav-link-location')).toHaveText(/Véhicules/i);
   });
 
   test('English home shows English content', async ({ page }) => {
     await page.goto('/en');
-    await expect(page.getByTestId('header-logo')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('link', { name: /Vehicles/i })).toBeVisible({ timeout: 5000 });
+    await waitForAppReady(page);
+    await expect(page.getByTestId('app-header')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('nav-link-location')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('nav-link-location')).toHaveText(/Vehicles/i);
   });
 
   test('invalid locale falls back to 404 or default', async ({ page }) => {

@@ -15,7 +15,7 @@ export default function ListingsIndexPage() {
     const rest = new URLSearchParams();
     if (city?.trim()) rest.set('city', city.trim());
     const query = rest.toString();
-    router.replace(`/${locale}/listings/location${query ? `?${query}` : ''}`);
+    router.replace(`/${locale}/location${query ? `?${query}` : ''}`);
   }, [locale, city, router]);
 
   return null;

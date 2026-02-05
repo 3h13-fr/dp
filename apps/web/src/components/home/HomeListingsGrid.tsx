@@ -4,12 +4,15 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ListingCard } from '@/components/listings/ListingCard';
+import { getListingTitle } from '@/lib/listings';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
 type ListingItem = {
   id: string;
-  title: string;
+  slug?: string;
+  title?: string | null;
+  displayName?: string | null;
   city?: string | null;
   country?: string | null;
   pricePerDay?: { toNumber?: () => number } | number | null;
@@ -84,7 +87,9 @@ export function HomeListingsGrid() {
           <ListingCard
             key={listing.id}
             id={listing.id}
-            title={listing.title}
+            slug={listing.slug}
+            vertical="location"
+            title={getListingTitle(listing)}
             city={listing.city}
             country={listing.country}
             pricePerDay={listing.pricePerDay}

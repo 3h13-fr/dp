@@ -8,12 +8,14 @@ import { JwtStrategy } from './jwt.strategy';
 import { UsersModule } from '../users/users.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { QueueModule } from '../queue/queue.module';
+import { KycModule } from '../kyc/kyc.module';
 
 @Module({
   imports: [
     UsersModule,
     PrismaModule,
     QueueModule,
+    KycModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       inject: [ConfigService],

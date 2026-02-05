@@ -5,11 +5,12 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { apiFetch, getToken } from '@/lib/api';
+import { getListingTitle } from '@/lib/listings';
 
 type Conversation = {
   bookingId: string;
   drivepark?: boolean;
-  listing: { id: string; title: string };
+  listing: { id: string; title?: string | null; displayName?: string | null };
   otherUser: { id: string; firstName: string | null; lastName: string | null; avatarUrl: string | null } | null;
   lastMessage: { id: string; body: string; createdAt: string; senderId: string | null } | null;
   status: string;
@@ -105,7 +106,7 @@ export default function MessagesPage() {
           </Link>
           {currentConversation && (
             <p className="mt-2 font-medium">
-              {currentConversation.drivepark ? driveParkTitle : `${currentConversation.listing.title} · ${t('with')} ${currentConversation.otherUser?.firstName ?? ''} ${currentConversation.otherUser?.lastName ?? ''}`.trim()}
+              {currentConversation.drivepark ? driveParkTitle : `${getListingTitle(currentConversation.listing)} · ${t('with')} ${currentConversation.otherUser?.firstName ?? ''} ${currentConversation.otherUser?.lastName ?? ''}`.trim()}
             </p>
           )}
           <div className="mt-4 space-y-3 rounded-lg border border-border bg-muted/20 p-4 min-h-[200px]">
@@ -157,7 +158,7 @@ export default function MessagesPage() {
                 href={`/${locale}/messages?bookingId=${c.bookingId}`}
                 className="block rounded-lg border border-border bg-background p-4 hover:bg-muted/30"
               >
-                <p className="font-medium">{c.drivepark ? driveParkTitle : c.listing.title}</p>
+                <p className="font-medium">{c.drivepark ? driveParkTitle : getListingTitle(c.listing)}</p>
                 <p className="text-sm text-muted-foreground">
                   {c.drivepark ? t('driveParkDescription') : `${c.otherUser?.firstName ?? ''} ${c.otherUser?.lastName ?? ''} · ${c.status}`.trim()}
                 </p>

@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Role } from 'database';
+import { Role, BookingStatus } from 'database';
 
 /** Known API keys / tokens that admins can set. Add new keys here and in ADMIN_SETTINGS_KEYS. */
 export const ADMIN_SETTINGS_KEYS = [
@@ -112,6 +112,48 @@ export class AdminService {
         skip: offset,
       }),
       this.prisma.listing.count({ where }),
+    ]);
+    return { items, total };
+  }
+
+  async getListingById(id: string): Promise<unknown> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id },
+      include: {
+        host: { select: { id: true, email: true, firstName: true, lastName: true } },
+        photos: { orderBy: { order: 'asc' } },
+        vehicle: {
+          include: {
+            make: { select: { id: true, name: true, slug: true } },
+            model: { select: { id: true, name: true, slug: true } },
+          },
+        },
+      },
+    });
+    if (!listing) throw new NotFoundException('Listing not found');
+    const displayTitle = (listing.displayName ?? listing.title ?? '').toString().trim() || '—';
+    return { ...listing, displayTitle };
+  }
+
+  async getBookings(
+    limit = 50,
+    offset = 0,
+    status?: string,
+  ): Promise<{ items: unknown[]; total: number }> {
+    const where = status ? { status: status as BookingStatus } : {};
+    const [items, total] = await Promise.all([
+      this.prisma.booking.findMany({
+        where,
+        include: {
+          listing: { select: { id: true, title: true, displayName: true, type: true, slug: true } },
+          guest: { select: { id: true, firstName: true, lastName: true, email: true } },
+          host: { select: { id: true, firstName: true, lastName: true, email: true } },
+        },
+        orderBy: { startAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      this.prisma.booking.count({ where }),
     ]);
     return { items, total };
   }

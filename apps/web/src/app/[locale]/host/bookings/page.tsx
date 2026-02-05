@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { apiFetch } from '@/lib/api';
+import { getListingTitle } from '@/lib/listings';
 
 type Booking = {
   id: string;
@@ -12,12 +13,13 @@ type Booking = {
   endAt: string;
   totalAmount: unknown;
   currency: string;
-  listing: { id: string; title: string; type: string };
+  listing: { id: string; title?: string | null; displayName?: string | null; type: string };
   guest: { id: string; firstName: string | null; lastName: string | null; email: string };
 };
 
 export default function HostBookingsPage() {
   const locale = useLocale();
+  const t = useTranslations('hostNav');
   const [data, setData] = useState<{ items: Booking[]; total: number } | null>(null);
 
   useEffect(() => {
@@ -53,7 +55,7 @@ export default function HostBookingsPage() {
             <tbody>
               {data.items.map((b) => (
                 <tr key={b.id} className="border-t border-border">
-                  <td className="p-3">{b.listing?.title}</td>
+                  <td className="p-3">{b.listing ? getListingTitle(b.listing) : '—'}</td>
                   <td className="p-3">
                     {[b.guest?.firstName, b.guest?.lastName].filter(Boolean).join(' ') || b.guest?.email || '—'}
                   </td>
@@ -65,12 +67,12 @@ export default function HostBookingsPage() {
                   </td>
                   <td className="p-3">{b.status}</td>
                   <td className="p-3">
-                    <Link href={`/${locale}/bookings/${b.id}`} className="font-medium text-primary hover:underline">
-                      View
+                    <Link href={`/${locale}/host/bookings/${b.id}`} className="font-medium text-primary hover:underline">
+                      {t('detail')}
                     </Link>
                     {' · '}
                     <Link href={`/${locale}/messages?bookingId=${b.id}`} className="font-medium text-primary hover:underline">
-                      Message
+                      {t('message')}
                     </Link>
                   </td>
                 </tr>

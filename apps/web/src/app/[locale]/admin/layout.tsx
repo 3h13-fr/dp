@@ -20,11 +20,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     apiFetch('/auth/me')
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((res) => {
+        if (res.ok) return res.json();
+        // Only clear token on 401 so transient errors (network, 500) don't log the user out
+        if (res.status === 401) clearToken();
+        return Promise.reject();
+      })
       .then(setUser)
       .catch(() => {
-        clearToken();
-        router.replace(`${localePrefix}/login`);
+        router.replace(`${localePrefix}/login?redirect=${encodeURIComponent('/admin')}`);
       })
       .finally(() => setLoading(false));
   }, [router, localePrefix]);
@@ -57,14 +61,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const mainLinks = [
-    { href: '/admin', label: 'Dashboard' },
-    { href: '/admin/users', label: 'Users' },
-    { href: '/admin/listings', label: 'Listings' },
-    { href: '/admin/audit', label: 'Audit logs' },
+    { href: '/admin', label: t('dashboard') },
+    { href: '/admin/users', label: t('users') },
+    { href: '/admin/listings', label: t('listings') },
+    { href: '/admin/bookings', label: t('bookings') },
+    { href: '/admin/kyc', label: t('kyc') },
+    { href: '/admin/audit', label: t('audit') },
   ];
 
   const settingsLinks = [
-    { href: '/admin/settings/api-keys', label: 'Clés API' },
+    { href: '/admin/settings/api-keys', label: t('apiKeys') },
   ];
 
   return (

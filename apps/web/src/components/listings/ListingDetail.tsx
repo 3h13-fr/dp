@@ -2,10 +2,13 @@
 
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
+import { getListingTitle } from '@/lib/listings';
 
 type Listing = {
   id: string;
-  title: string;
+  slug?: string;
+  title?: string | null;
+  displayName?: string | null;
   description?: string | null;
   pricePerDay?: { toNumber?: () => number } | number | null;
   currency?: string;
@@ -16,7 +19,7 @@ type Listing = {
   host?: { id: string; firstName?: string | null; lastName?: string | null };
 };
 
-export function ListingDetail({ listing }: { listing: Listing }) {
+export function ListingDetail({ listing, vertical = 'location' }: { listing: Listing; vertical?: 'location' | 'experience' | 'ride' }) {
   const locale = useLocale();
   const t = useTranslations('listing');
   const price = listing.pricePerDay != null
@@ -32,7 +35,7 @@ export function ListingDetail({ listing }: { listing: Listing }) {
         {photo?.url ? (
           <img
             src={photo.url}
-            alt={listing.title}
+            alt={getListingTitle(listing)}
             className="h-80 w-full object-cover"
           />
         ) : (
@@ -42,7 +45,7 @@ export function ListingDetail({ listing }: { listing: Listing }) {
         )}
       </div>
       <div>
-        <h1 className="text-3xl font-bold">{listing.title}</h1>
+        <h1 className="text-3xl font-bold">{getListingTitle(listing)}</h1>
         {(listing.city || listing.country) && (
           <p className="mt-1 text-muted-foreground">
             {[listing.city, listing.country].filter(Boolean).join(', ')}
@@ -64,7 +67,7 @@ export function ListingDetail({ listing }: { listing: Listing }) {
       )}
       <div>
         <Link
-          href={`/${locale}/listings/${listing.id}/checkout`}
+          href={`/${locale}/${vertical}/${listing.slug ?? listing.id}/checkout`}
           className="inline-block rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground hover:opacity-90"
           data-testid="listing-book-link"
         >

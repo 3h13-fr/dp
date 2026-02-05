@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { apiFetch, getToken } from '@/lib/api';
+import { getListingTitle } from '@/lib/listings';
 
 export default function BookingDetailPage() {
   const params = useParams();
@@ -14,6 +15,7 @@ export default function BookingDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [kycStatus, setKycStatus] = useState<string | null>(null);
   const [booking, setBooking] = useState<{
     id: string;
     status: string;
@@ -22,7 +24,7 @@ export default function BookingDetailPage() {
     totalAmount: string;
     currency: string;
     cautionAmount: string | null;
-    listing: { id: string; title: string; type: string };
+    listing: { id: string; title?: string | null; displayName?: string | null; type: string };
     guest: { firstName: string | null; lastName: string | null };
     host: { firstName: string | null; lastName: string | null };
   } | null>(null);
@@ -37,9 +39,15 @@ export default function BookingDetailPage() {
       .then((r) => (r.status === 404 ? null : r.json()))
       .then((data) => { setBooking(data); setLoading(false); })
       .catch(() => { setBooking(null); setLoading(false); });
+    apiFetch('/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((user) => setKycStatus(user?.kycStatus ?? null))
+      .catch(() => setKycStatus(null));
   }, [id, router, locale]);
 
   const t = useTranslations('booking');
+  const tKyc = useTranslations('kyc');
+  const isConfirmedBooking = booking?.status === 'CONFIRMED' || booking?.status === 'IN_PROGRESS' || booking?.status === 'COMPLETED';
   if (loading) return <p className="px-4 py-8 text-muted-foreground">{t('common.loading')}</p>;
   if (!booking) {
     return (
@@ -54,9 +62,20 @@ export default function BookingDetailPage() {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-8">
+      {isConfirmedBooking && kycStatus !== 'APPROVED' && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-amber-800">{tKyc('kycRequired')}</p>
+          <Link
+            href={`/${locale}/profil/kyc?kyc=required`}
+            className="mt-3 inline-block rounded-lg bg-amber-700 px-4 py-2 text-sm font-medium text-white hover:bg-amber-800"
+          >
+            {tKyc('goToKyc')}
+          </Link>
+        </div>
+      )}
       <h1 className="text-2xl font-bold">{t('title')}</h1>
       <p className="mt-1 text-muted-foreground">
-        <Link href={`/${locale}/listings/${booking.listing.id}`} className="text-primary underline">{booking.listing.title}</Link>
+        <Link href={`/${locale}/${booking.listing.type === 'CAR_RENTAL' ? 'location' : booking.listing.type === 'MOTORIZED_EXPERIENCE' ? 'experience' : 'ride'}/${(booking.listing as { slug?: string }).slug ?? booking.listing.id}`} className="text-primary underline">{getListingTitle(booking.listing)}</Link>
       </p>
       <dl className="mt-6 space-y-2">
         <div>

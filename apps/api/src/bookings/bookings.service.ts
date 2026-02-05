@@ -22,7 +22,7 @@ export class BookingsService {
       this.prisma.booking.findMany({
         where: { guestId },
         include: {
-          listing: { select: { id: true, title: true, type: true, photos: { take: 1 } } },
+          listing: { select: { id: true, slug: true, title: true, type: true, photos: { take: 1 } } },
           host: { select: { id: true, firstName: true, lastName: true } },
         },
         orderBy: { startAt: 'desc' },
@@ -39,7 +39,7 @@ export class BookingsService {
       this.prisma.booking.findMany({
         where: { hostId },
         include: {
-          listing: { select: { id: true, title: true, type: true, photos: { take: 1 } } },
+          listing: { select: { id: true, slug: true, title: true, type: true, photos: { take: 1 } } },
           guest: { select: { id: true, firstName: true, lastName: true, email: true } },
         },
         orderBy: { startAt: 'desc' },
@@ -55,7 +55,7 @@ export class BookingsService {
     const booking = await this.prisma.booking.findUnique({
       where: { id },
       include: {
-        listing: true,
+        listing: { include: { photos: { orderBy: { order: 'asc' } } } },
         guest: { select: { id: true, firstName: true, lastName: true, email: true } },
         host: { select: { id: true, firstName: true, lastName: true } },
       },

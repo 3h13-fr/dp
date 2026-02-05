@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { getListingTitle } from '@/lib/listings';
 
 type ListingRow = {
   id: string;
-  title: string;
+  title?: string | null;
+  displayName?: string | null;
   type: string;
   status: string;
   host: { email: string; firstName: string | null; lastName: string | null };
@@ -69,7 +71,7 @@ export default function AdminListingsPage() {
                 <img src={l.photos[0].url} alt="" className="h-16 w-24 rounded object-cover" />
               )}
               <div>
-                <p className="font-medium">{l.title}</p>
+                <p className="font-medium">{getListingTitle(l)}</p>
                 <p className="text-sm text-muted-foreground">
                   {l.type} · {l.host.email}
                 </p>

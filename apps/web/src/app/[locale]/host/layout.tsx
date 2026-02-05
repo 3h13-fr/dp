@@ -23,11 +23,14 @@ export default function HostLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     apiFetch('/auth/me')
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((res) => {
+        if (res.ok) return res.json();
+        if (res.status === 401) clearToken();
+        return Promise.reject();
+      })
       .then(setUser)
       .catch(() => {
-        clearToken();
-        router.replace(`${localePrefix}/login?redirect=/host`);
+        router.replace(`${localePrefix}/login?redirect=${encodeURIComponent('/host')}`);
       })
       .finally(() => setLoading(false));
   }, [router, localePrefix]);
@@ -71,10 +74,13 @@ export default function HostLayout({ children }: { children: React.ReactNode }) 
     return null;
   }
 
-  const navLinkClass = (href: string) =>
-    pathWithoutLocale === href
-      ? 'text-primary font-medium'
-      : 'text-muted-foreground hover:text-foreground';
+  const isDashboard = pathWithoutLocale === '/host' || pathWithoutLocale.startsWith('/host/listings');
+  const isBookings = pathWithoutLocale.startsWith('/host/bookings');
+  const navLinkClass = (href: string) => {
+    const active =
+      href === '/host' ? isDashboard : href === '/host/bookings' ? isBookings : pathWithoutLocale === href;
+    return active ? 'rounded-lg bg-muted px-3 py-2 text-sm font-medium text-primary' : 'rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground';
+  };
 
   return (
     <div className="min-h-screen bg-muted/20">

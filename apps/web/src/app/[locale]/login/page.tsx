@@ -94,13 +94,27 @@ export default function LoginPage() {
             /* ignore */
           }
         }
-        const path = redirectParam
-          ? (redirectParam.startsWith('/') ? redirectParam : `/${redirectParam}`)
-          : data.role === 'ADMIN'
+        let role = data.role != null ? String(data.role).toUpperCase() : '';
+        if (!role) {
+          try {
+            const meRes = await apiFetch('/auth/me');
+            if (meRes.ok) {
+              const me = await meRes.json();
+              role = me?.role != null ? String(me.role).toUpperCase() : '';
+              if (me?.role) localStorage.setItem('user_role', me.role);
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        const path =
+          role === 'ADMIN'
             ? '/admin'
-            : data.role === 'HOST'
+            : role === 'HOST'
               ? '/host'
-              : '/';
+              : redirectParam
+                ? (redirectParam.startsWith('/') ? redirectParam : `/${redirectParam}`)
+                : '/';
         router.push(`/${locale}${path}`);
         router.refresh();
       } else {
@@ -162,13 +176,27 @@ export default function LoginPage() {
             /* ignore */
           }
         }
-        const path = redirectParam
-          ? (redirectParam.startsWith('/') ? redirectParam : `/${redirectParam}`)
-          : data.role === 'ADMIN'
+        let role = data.role != null ? String(data.role).toUpperCase() : '';
+        if (!role) {
+          try {
+            const meRes = await apiFetch('/auth/me');
+            if (meRes.ok) {
+              const me = await meRes.json();
+              role = me?.role != null ? String(me.role).toUpperCase() : '';
+              if (me?.role) localStorage.setItem('user_role', me.role);
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        const path =
+          role === 'ADMIN'
             ? '/admin'
-            : data.role === 'HOST'
+            : role === 'HOST'
               ? '/host'
-              : '/';
+              : redirectParam
+                ? (redirectParam.startsWith('/') ? redirectParam : `/${redirectParam}`)
+                : '/';
         router.push(`/${locale}${path}`);
         router.refresh();
       } else {

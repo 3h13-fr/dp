@@ -17,6 +17,9 @@ import { QueueModule } from './queue/queue.module';
 import { UploadModule } from './upload/upload.module';
 import { AdminModule } from './admin/admin.module';
 import { AvailabilityModule } from './availability/availability.module';
+import { GeoModule } from './geo/geo.module';
+import { VehiclesModule } from './vehicles/vehicles.module';
+import { KycModule } from './kyc/kyc.module';
 
 @Module({
   controllers: [AppController],
@@ -30,8 +33,11 @@ import { AvailabilityModule } from './availability/availability.module';
     AuthModule,
     AdminModule,
     UsersModule,
+    VehiclesModule,
     ListingsModule,
     AvailabilityModule,
+    GeoModule,
+    KycModule,
     BookingsModule,
     PaymentsModule,
     MessagesModule,

@@ -6,17 +6,30 @@
 |-------|----------------|-----------------|------|------|
 | `/` | (redirect → /en) | — | Non | OK |
 | `/[locale]` | `app/[locale]/page.tsx` | — | Non | OK |
-| `/[locale]/listings` | `app/[locale]/listings/page.tsx` | GET /listings (via ListingsGrid) | Non | OK |
-| `/[locale]/listings/[id]` | `app/[locale]/listings/[id]/page.tsx` | GET /listings/:id | Non | OK |
-| `/[locale]/listings/[id]/checkout` | `app/[locale]/listings/[id]/checkout/page.tsx` | POST /bookings | Oui (redirect login) | OK |
+| `/[locale]/listings` | `app/[locale]/listings/page.tsx` | — (redirect → /location) | Non | OK |
+| `/[locale]/location` | `app/[locale]/location/page.tsx` | GET /listings | Non | OK |
+| `/[locale]/location/[slug]` | `app/[locale]/location/[slug]/page.tsx` | GET /listings/:slug | Non | OK |
+| `/[locale]/location/[slug]/checkout` | `app/[locale]/location/[slug]/checkout/page.tsx` | POST /bookings | Oui (redirect login) | OK |
+| `/[locale]/experience` | `app/[locale]/experience/page.tsx` | GET /listings | Non | OK |
+| `/[locale]/experience/[slug]` | `app/[locale]/experience/[slug]/page.tsx` | GET /listings/:slug | Non | OK |
+| `/[locale]/experience/[slug]/checkout` | id. checkout | POST /bookings | Oui | OK |
+| `/[locale]/ride` | `app/[locale]/ride/page.tsx` | GET /listings | Non | OK |
+| `/[locale]/ride/[slug]` | `app/[locale]/ride/[slug]/page.tsx` | GET /listings/:slug | Non | OK |
+| `/[locale]/ride/[slug]/checkout` | id. checkout | POST /bookings | Oui | OK |
 | `/[locale]/bookings` | `app/[locale]/bookings/page.tsx` | GET /bookings/my | Oui | OK |
 | `/[locale]/bookings/[id]` | `app/[locale]/bookings/[id]/page.tsx` | GET /bookings/:id | Oui | OK |
 | `/[locale]/bookings/[id]/pay` | `app/[locale]/bookings/[id]/pay/page.tsx` | GET /bookings/:id, POST /payments/create-payment-intent | Oui | OK |
 | `/[locale]/login` | `app/[locale]/login/page.tsx` | POST /auth/login | Non | OK |
-| `/[locale]/messages` | — | — | — | **404** |
-| `/[locale]/admin` | `app/[locale]/admin/page.tsx` (redirect → users) | — | Oui (layout) | OK |
+| `/[locale]/messages` | `app/[locale]/messages/page.tsx` | GET /messages (threads) | Oui | OK |
+| `/[locale]/host` | `app/[locale]/host/page.tsx` | GET /listings/my | Oui (layout HOST) | OK |
+| `/[locale]/host/bookings` | `app/[locale]/host/bookings/page.tsx` | GET /bookings/host | Oui | OK |
+| `/[locale]/host/bookings/[id]` | `app/[locale]/host/bookings/[id]/page.tsx` | GET /bookings/:id | Oui | OK |
+| `/[locale]/host/listings/[id]` | `app/[locale]/host/listings/[id]/page.tsx` | GET /listings/:id | Oui | OK |
+| `/[locale]/admin` | `app/[locale]/admin/page.tsx` (redirect → users) | — | Oui (layout ADMIN) | OK |
 | `/[locale]/admin/users` | `app/[locale]/admin/users/page.tsx` | GET /admin/users | Oui | OK |
 | `/[locale]/admin/listings` | `app/[locale]/admin/listings/page.tsx` | GET /admin/listings, PATCH /admin/listings/:id/status | Oui | OK |
+| `/[locale]/admin/listings/[id]` | `app/[locale]/admin/listings/[id]/page.tsx` | GET /admin/listings/:id, PATCH /admin/listings/:id/status | Oui | OK |
+| `/[locale]/admin/bookings` | `app/[locale]/admin/bookings/page.tsx` | GET /admin/bookings | Oui | OK |
 | `/[locale]/admin/audit` | `app/[locale]/admin/audit/page.tsx` | GET /admin/audit-logs | Oui | OK |
 
 **Note :** Les dossiers `app/admin/` (sans `[locale]`) existent mais ne sont pas utilisés par le routage actuel (middleware next-intl → tout sous `[locale]`).
@@ -35,14 +48,15 @@
 | `/[locale]/bookings/[id]` | OK | Idem : pas d’annulation, check-in/out, incident | Idem | P2 |
 | `/[locale]/bookings/[id]/pay` | OK | Facture/confirmation automatique (côté API/email) à vérifier | Vérifier webhook Stripe + email confirmation | P3 |
 | `/[locale]/login` | OK | Pas d’inscription, pas de réinitialisation mot de passe | Page signup, page forgot-password | P2 |
-| `/[locale]/messages` | **404** | Page absente (lien dans le header) | Créer page placeholder avec texte "Messages (à venir)" ou liste threads vide | **P1** |
+| `/[locale]/messages` | OK | Page présente (liste threads, conversations) | — | — |
+| `/[locale]/host/*` | OK | Édition annonce, confirmer/refuser réservation (selon besoin) | PATCH /listings/:id (host), actions résa host | P2 |
 | `/[locale]/admin/*` | OK | Pas de gestion catégories/villes, pas d’outils anti-fraude/KYC dédiés, pas d’analytics, pas de support/remboursements | Pages et API dédiées selon besoin | P3 |
 
 ---
 
 ## Résumé des corrections immédiates (P1)
 
-- **`/[locale]/messages`** : route 404 car aucun fichier `app/[locale]/messages/page.tsx`. Fix : ajouter une page minimale pour que le lien du header ne casse pas. → **Corrigé** : `app/[locale]/messages/page.tsx` ajouté (placeholder « Coming soon »).
+- **`/[locale]/messages`** : page en place (`app/[locale]/messages/page.tsx`).
 
 ## Test de navigation (Playwright)
 

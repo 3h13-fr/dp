@@ -7,6 +7,8 @@ import { useLocale } from 'next-intl';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { apiFetch, getToken } from '@/lib/api';
+import { getListingTitle } from '@/lib/listings';
+import { BookingPaySummary } from '@/components/listings/BookingPaySummary';
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -54,24 +56,37 @@ function PaymentForm({ clientSecret, bookingId, totalAmount, currency, onSuccess
   );
 }
 
+type BookingState = {
+  id: string;
+  totalAmount: string;
+  currency: string;
+  status: string;
+  startAt: string;
+  endAt: string;
+  cautionAmount?: string | null;
+  listing: {
+    id: string;
+    slug?: string | null;
+    title?: string | null;
+    displayName?: string | null;
+    displayTitle?: string | null;
+    type?: string;
+    photos?: Array<{ url: string; order?: number }>;
+  };
+};
+
 export default function PayPage() {
   const params = useParams();
   const router = useRouter();
   const locale = useLocale();
   const id = String(params.id);
-  const [booking, setBooking] = useState<{
-    id: string;
-    totalAmount: string;
-    currency: string;
-    status: string;
-    listing: { title: string };
-  } | null>(null);
+  const [booking, setBooking] = useState<BookingState | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!getToken()) {
-      router.replace('/login');
+      router.replace(`/${locale}/login`);
       return;
     }
     apiFetch(`/bookings/${id}`)
@@ -98,9 +113,9 @@ export default function PayPage() {
 
   if (loading || !booking) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-8">
+      <div className="mx-auto max-w-6xl px-4 py-8">
         {loading ? <p>Loading...</p> : <p>Booking not found.</p>}
-        <Link href={`/${locale}/listings`} className="mt-4 inline-block text-primary underline">Back to listings</Link>
+        <Link href={`/${locale}/location`} className="mt-4 inline-block text-primary underline">Back to listings</Link>
       </div>
     );
   }
@@ -110,7 +125,7 @@ export default function PayPage() {
 
   if (booking.status !== 'PENDING' || totalAmount <= 0) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-8">
+      <div className="mx-auto max-w-6xl px-4 py-8">
         <h1 className="text-2xl font-bold">Booking {booking.id}</h1>
         <p className="mt-2 text-muted-foreground">
           {booking.status === 'CONFIRMED' || booking.status === 'COMPLETED'
@@ -123,30 +138,37 @@ export default function PayPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-8">
-      <h1 className="text-2xl font-bold">Complete payment</h1>
-      <p className="mt-1 text-muted-foreground">{booking.listing?.title}</p>
-      <p className="mt-2 font-medium">Total: {totalAmount} {currency}</p>
-      {stripePromise && clientSecret ? (
-        <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
-          <PaymentForm
-            clientSecret={clientSecret}
-            bookingId={booking.id}
-            totalAmount={totalAmount}
-            currency={currency}
-            onSuccess={() => router.push(`/${locale}/bookings/${booking.id}`)}
-          />
-        </Elements>
-      ) : (
-        <div className="mt-4">
-          {!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? (
-            <p className="text-muted-foreground">Stripe is not configured. Set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.</p>
+    <div className="mx-auto max-w-6xl px-4 py-8">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr,400px]">
+        <div>
+          <h1 className="text-2xl font-bold">Complete payment</h1>
+          <p className="mt-1 text-muted-foreground">{booking.listing ? getListingTitle(booking.listing) : '—'}</p>
+          <p className="mt-2 font-medium">Total: {totalAmount} {currency}</p>
+          {stripePromise && clientSecret ? (
+            <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
+              <PaymentForm
+                clientSecret={clientSecret}
+                bookingId={booking.id}
+                totalAmount={totalAmount}
+                currency={currency}
+                onSuccess={() => router.push(`/${locale}/bookings/${booking.id}`)}
+              />
+            </Elements>
           ) : (
-            <p className="text-muted-foreground">Preparing payment form...</p>
+            <div className="mt-4">
+              {!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? (
+                <p className="text-muted-foreground">Stripe is not configured. Set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.</p>
+              ) : (
+                <p className="text-muted-foreground">Preparing payment form...</p>
+              )}
+              <Link href={`/${locale}/bookings/${booking.id}`} className="mt-2 inline-block text-primary underline">Back to booking</Link>
+            </div>
           )}
-          <Link href={`/${locale}/bookings/${booking.id}`} className="mt-2 inline-block text-primary underline">Back to booking</Link>
         </div>
-      )}
+        <div className="order-first lg:order-none lg:sticky lg:top-24 lg:self-start">
+          <BookingPaySummary booking={booking} />
+        </div>
+      </div>
     </div>
   );
 }

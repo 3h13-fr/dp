@@ -14,7 +14,7 @@ export function SearchBar() {
     e.preventDefault();
     const params = new URLSearchParams();
     if (query.trim()) params.set('q', query.trim());
-    router.push(`/${locale}/listings?${params.toString()}`);
+    router.push(`/${locale}/location?${params.toString()}`);
   };
 
   return (

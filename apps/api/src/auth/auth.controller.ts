@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { IsEmail, IsString, MinLength, MaxLength, IsOptional } from 'class-validator';
 import { AuthService } from './auth.service';
+import { KycService } from '../kyc/kyc.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { User } from 'database';
 
@@ -62,7 +63,10 @@ export class VerifyCodeDto {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private auth: AuthService) {}
+  constructor(
+    private auth: AuthService,
+    private kyc: KycService,
+  ) {}
 
   @Post('send-code')
   async sendCode(@Body() dto: SendCodeDto) {
@@ -99,7 +103,26 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
-  me(@CurrentUser() user: User) {
-    return user;
+  async me(@CurrentUser() user: User) {
+    let kycStatus: string | null = null;
+    try {
+      const kyc = await this.kyc.getForUser(user.id);
+      const kycRecord = kyc as { status?: string } | null;
+      kycStatus = kycRecord?.status ?? null;
+    } catch {
+      // KYC fetch must not break /auth/me (e.g. missing table or migration)
+    }
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
+      phone: user.phone,
+      preferredLang: user.preferredLang,
+      createdAt: user.createdAt,
+      kycStatus,
+    };
   }
 }

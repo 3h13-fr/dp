@@ -5,10 +5,12 @@ import { useLocale, useTranslations } from 'next-intl';
 
 type ListingCardProps = {
   id: string;
+  slug?: string;
+  vertical: 'location' | 'experience' | 'ride';
   title: string;
   city?: string | null;
   country?: string | null;
-  pricePerDay?: number | { toNumber: () => number } | null;
+  pricePerDay?: number | { toNumber?: () => number } | null;
   currency?: string;
   photos?: Array<{ url: string; order?: number }>;
   host?: { firstName?: string | null; lastName?: string | null } | null;
@@ -37,6 +39,8 @@ function formatTransmission(transmission: string | null | undefined, t: ReturnTy
 
 export function ListingCard({
   id,
+  slug,
+  vertical,
   title,
   city,
   country,
@@ -71,9 +75,10 @@ export function ListingCard({
       return (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24) <= NEW_DAYS;
     })();
 
+  const href = `/${locale}/${vertical}/${slug ?? id}`;
   return (
     <Link
-      href={`/${locale}/listings/${id}`}
+      href={href}
       className="group block overflow-hidden rounded-xl border border-neutral-200 bg-white transition hover:border-neutral-400 hover:shadow-md"
     >
       <div className="relative aspect-[4/3] bg-neutral-100">

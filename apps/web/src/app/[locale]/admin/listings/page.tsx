@@ -1,11 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useLocale } from 'next-intl';
 import { apiFetch } from '@/lib/api';
+import { getListingTitle } from '@/lib/listings';
 
 type ListingRow = {
   id: string;
-  title: string;
+  title?: string | null;
+  displayName?: string | null;
   type: string;
   status: string;
   host: { email: string; firstName: string | null; lastName: string | null };
@@ -13,6 +17,7 @@ type ListingRow = {
 };
 
 export default function AdminListingsPage() {
+  const locale = useLocale();
   const [data, setData] = useState<{ items: ListingRow[]; total: number } | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
 
@@ -69,23 +74,31 @@ export default function AdminListingsPage() {
                 <img src={l.photos[0].url} alt="" className="h-16 w-24 rounded object-cover" />
               )}
               <div>
-                <p className="font-medium">{l.title}</p>
+                <p className="font-medium">{getListingTitle(l)}</p>
                 <p className="text-sm text-muted-foreground">
                   {l.type} · {l.host.email}
                 </p>
                 <p className="text-xs text-muted-foreground">Status: {l.status}</p>
               </div>
             </div>
-            <select
-              value={l.status}
-              onChange={(e) => updateStatus(l.id, e.target.value)}
-              className="rounded border border-border bg-background px-2 py-1 text-sm"
-            >
-              <option value="DRAFT">DRAFT</option>
-              <option value="PENDING">PENDING</option>
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="SUSPENDED">SUSPENDED</option>
-            </select>
+            <div className="flex items-center gap-3">
+              <Link
+                href={`/${locale}/admin/listings/${l.id}`}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Detail
+              </Link>
+              <select
+                value={l.status}
+                onChange={(e) => updateStatus(l.id, e.target.value)}
+                className="rounded border border-border bg-background px-2 py-1 text-sm"
+              >
+                <option value="DRAFT">DRAFT</option>
+                <option value="PENDING">PENDING</option>
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="SUSPENDED">SUSPENDED</option>
+              </select>
+            </div>
           </div>
         ))}
       </div>

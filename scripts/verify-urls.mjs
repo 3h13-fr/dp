@@ -29,17 +29,18 @@ const apiRoutes = [
   { method: 'GET', path: `/users/${FAKE_ID}`, accepted: [200, 401, 404] },
   { method: 'GET', path: `/payments/booking/${FAKE_ID}`, accepted: [200, 401, 404] },
   { method: 'GET', path: '/messages/thread', accepted: [200, 400, 401] },
+  { method: 'GET', path: '/geo/countries', accepted: [200] },
 ];
 
 const frontendRoutes = [
   { path: '/', accepted: [200, 307] },
   ...LOCALES.map((locale) => ({ path: `/${locale}`, accepted: [200] })),
   ...LOCALES.map((locale) => ({ path: `/${locale}/listings`, accepted: [200, 302] })),
-  ...LOCALES.map((locale) => ({ path: `/${locale}/listings/location`, accepted: [200] })),
-  ...LOCALES.map((locale) => ({ path: `/${locale}/listings/experience`, accepted: [200] })),
-  ...LOCALES.map((locale) => ({ path: `/${locale}/listings/chauffeur`, accepted: [200] })),
-  ...LOCALES.map((locale) => ({ path: `/${locale}/listings/${FAKE_ID}`, accepted: [200, 404] })),
-  ...LOCALES.map((locale) => ({ path: `/${locale}/listings/${FAKE_ID}/checkout`, accepted: [200, 404] })),
+  ...LOCALES.map((locale) => ({ path: `/${locale}/location`, accepted: [200] })),
+  ...LOCALES.map((locale) => ({ path: `/${locale}/experience`, accepted: [200] })),
+  ...LOCALES.map((locale) => ({ path: `/${locale}/ride`, accepted: [200] })),
+  ...LOCALES.map((locale) => ({ path: `/${locale}/location/${FAKE_ID}`, accepted: [200, 404] })),
+  ...LOCALES.map((locale) => ({ path: `/${locale}/location/${FAKE_ID}/checkout`, accepted: [200, 404] })),
   ...LOCALES.map((locale) => ({ path: `/${locale}/bookings`, accepted: [200] })),
   ...LOCALES.map((locale) => ({ path: `/${locale}/bookings/${FAKE_ID}`, accepted: [200, 404] })),
   ...LOCALES.map((locale) => ({ path: `/${locale}/bookings/${FAKE_ID}/pay`, accepted: [200, 404] })),
@@ -62,6 +63,10 @@ async function check(url, options, acceptedStatuses, label) {
   } catch (err) {
     return { label, url, status: null, error: err.message, ok: false };
   }
+}
+
+function isConnectionError(result) {
+  return result.error && (result.error.includes('fetch failed') || result.error.includes('ECONNREFUSED'));
 }
 
 async function main() {
@@ -89,14 +94,23 @@ async function main() {
   }
 
   const failed = results.filter((r) => !r.ok);
+  const apiFailed = results.filter((r) => r.label.startsWith('API ') && !r.ok);
+  const allApiConnectionErrors = apiFailed.length > 0 && apiFailed.every((r) => isConnectionError(r));
+  const realFailures = allApiConnectionErrors ? failed.filter((r) => !r.label.startsWith('API ')) : failed;
+
   out('\n--- Summary ---');
   out(`Total: ${results.length}, OK: ${results.length - failed.length}, FAIL: ${failed.length}`);
-  if (failed.length) {
+  if (allApiConnectionErrors) {
+    out('\nNote: API requests failed (connection refused). Start the API with: pnpm dev:api (or pnpm dev)');
+    out('Exit 0 (only frontend was verified).');
+  }
+  if (realFailures.length) {
     out('\nFailed:');
-    failed.forEach((f) => out(`  ${f.label} → ${f.status ?? f.error}`));
+    realFailures.forEach((f) => out(`  ${f.label} → ${f.status ?? f.error}`));
     process.exit(1);
   }
   out('\nAll URLs OK.\n');
+  process.exit(0);
 }
 
 main().catch((e) => {

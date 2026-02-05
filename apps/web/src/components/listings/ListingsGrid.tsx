@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { ListingCard } from '@/components/listings/ListingCard';
+import { getListingTitle } from '@/lib/listings';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -11,7 +12,9 @@ export type ListingTypeParam = 'CAR_RENTAL' | 'MOTORIZED_EXPERIENCE' | 'CHAUFFEU
 
 type ListingItem = {
   id: string;
-  title: string;
+  slug?: string;
+  title?: string | null;
+  displayName?: string | null;
   city?: string | null;
   country?: string | null;
   pricePerDay?: { toNumber?: () => number } | number | null;
@@ -24,6 +27,12 @@ type ListingItem = {
   fuelType?: string | null;
   transmission?: string | null;
   createdAt?: string;
+};
+
+const VERTICAL_BY_TYPE: Record<ListingTypeParam, 'location' | 'experience' | 'ride'> = {
+  CAR_RENTAL: 'location',
+  MOTORIZED_EXPERIENCE: 'experience',
+  CHAUFFEUR: 'ride',
 };
 
 type ListingsGridProps = {
@@ -111,7 +120,9 @@ export function ListingsGrid({ listingType }: ListingsGridProps = {}) {
           <ListingCard
             key={listing.id}
             id={listing.id}
-            title={listing.title}
+            slug={listing.slug}
+            vertical={VERTICAL_BY_TYPE[listingType ?? (listing.type as ListingTypeParam)] ?? 'location'}
+            title={getListingTitle(listing)}
             city={listing.city}
             country={listing.country}
             pricePerDay={listing.pricePerDay}

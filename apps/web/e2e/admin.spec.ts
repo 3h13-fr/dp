@@ -1,17 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { loginAsAdmin } from './helpers';
 
 const LOCALE = 'en';
 
-const LOGIN_DEMO = `/${LOCALE}/login?demo=1`;
-
 test.describe('Admin: validate / moderate listing', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(LOGIN_DEMO);
-    const demoSection = page.getByTestId('demo-login-section');
-    await expect(demoSection).toBeVisible({ timeout: 20000 });
-    await demoSection.getByPlaceholder('Email').fill('mohamedsakho@drivepark.net', { timeout: 10000 });
-    await demoSection.getByPlaceholder('Password').fill('demo', { timeout: 10000 });
-    await demoSection.getByRole('button', { name: /Sign in/i }).click({ timeout: 10000 });
+    await loginAsAdmin(page, LOCALE);
     await expect(page).toHaveURL(/\/(en|fr)\/admin/, { timeout: 15000 });
   });
 
@@ -36,5 +30,19 @@ test.describe('Admin: validate / moderate listing', () => {
     await expect(select).toHaveValue(otherStatus);
     await select.selectOption(currentValue);
     await expect(select).toHaveValue(currentValue);
+  });
+
+  test('admin can reach users page', async ({ page }) => {
+    await page.locator('a[href*="/admin/users"]').click();
+    await expect(page).toHaveURL(/\/(en|fr)\/admin\/users/);
+    await expect(page.getByRole('heading', { name: /Users/i })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/total/i)).toBeVisible({ timeout: 5000 });
+  });
+
+  test('admin can reach audit page', async ({ page }) => {
+    await page.locator('a[href*="/admin/audit"]').click();
+    await expect(page).toHaveURL(/\/(en|fr)\/admin\/audit/);
+    await expect(page.getByRole('heading', { name: /Audit logs/i })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/entries/i)).toBeVisible({ timeout: 5000 });
   });
 });

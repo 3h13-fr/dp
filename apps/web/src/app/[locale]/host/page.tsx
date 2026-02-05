@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { apiFetch } from '@/lib/api';
+import { getListingTitle } from '@/lib/listings';
 
 type Listing = {
   id: string;
-  title: string;
+  title?: string | null;
+  displayName?: string | null;
   slug: string;
   type: string;
   status: string;
@@ -21,13 +23,19 @@ type Listing = {
 export default function HostDashboardPage() {
   const locale = useLocale();
   const t = useTranslations('hostNav');
+  const tKyc = useTranslations('kyc');
   const [data, setData] = useState<{ items: Listing[]; total: number } | null>(null);
+  const [kycStatus, setKycStatus] = useState<string | null>(null);
 
   useEffect(() => {
     apiFetch('/listings/my?limit=50')
       .then((res) => res.json())
       .then(setData)
       .catch(() => setData({ items: [], total: 0 }));
+    apiFetch('/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((user) => setKycStatus(user?.kycStatus ?? null))
+      .catch(() => setKycStatus(null));
   }, []);
 
   if (!data) return <p className="text-muted-foreground">Loading...</p>;
@@ -38,6 +46,17 @@ export default function HostDashboardPage() {
       <p className="mt-1 text-sm text-muted-foreground">
         {t('listingsCount', { count: data.total })}
       </p>
+      {kycStatus !== 'APPROVED' && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="font-medium text-amber-800">{tKyc('requiredToCreateListing')}</p>
+          <Link
+            href={`/${locale}/profil/kyc?kyc=required`}
+            className="mt-3 inline-block rounded-lg bg-amber-700 px-4 py-2 text-sm font-medium text-white hover:bg-amber-800"
+          >
+            {tKyc('goToKyc')}
+          </Link>
+        </div>
+      )}
       {data.items.length === 0 ? (
         <p className="mt-6 text-muted-foreground">{t('noListings')}</p>
       ) : (
@@ -58,7 +77,7 @@ export default function HostDashboardPage() {
                   <div className="h-16 w-24 rounded bg-muted" />
                 )}
                 <div>
-                  <p className="font-medium">{listing.title}</p>
+                  <p className="font-medium">{getListingTitle(listing)}</p>
                   <p className="text-sm text-muted-foreground">
                     {listing.type} · {listing.status}
                     {listing.city && ` · ${listing.city}`}
@@ -70,12 +89,20 @@ export default function HostDashboardPage() {
                   )}
                 </div>
               </div>
-              <Link
-                href={`/${locale}/listings/${listing.id}`}
-                className="text-sm font-medium text-primary hover:underline"
-              >
-                {t('viewListing')}
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link
+                  href={`/${locale}/host/listings/${listing.id}`}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  {t('detail')}
+                </Link>
+                <Link
+                  href={`/${locale}/${listing.type === 'CAR_RENTAL' ? 'location' : listing.type === 'MOTORIZED_EXPERIENCE' ? 'experience' : 'ride'}/${listing.slug ?? listing.id}`}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  {t('viewListing')}
+                </Link>
+              </div>
             </li>
           ))}
         </ul>

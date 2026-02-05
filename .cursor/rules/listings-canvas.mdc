@@ -1,0 +1,25 @@
+---
+description: Règles pour les listings Location, Expérience et Chauffeur (canvas de base)
+globs: apps/web/**/listings/**/*,apps/web/**/SearchBar*.tsx,apps/web/**/page.tsx,apps/api/src/listings/**
+alwaysApply: false
+---
+
+# Listings — Location, Expérience, Chauffeur
+
+Référence obligatoire : **docs/LISTINGS_CANVAS.md**. Suivre ce canvas pour tout travail sur les listings.
+
+## Règles à respecter
+
+1. **Un véhicule peut être en location, en chauffeur, ou les deux** — à terme, calendrier unique pour le véhicule (voir canvas §1). Pour l’instant : un `Listing` par type (`CAR_RENTAL`, `MOTORIZED_EXPERIENCE`, `CHAUFFEUR`).
+
+2. **Accueil** : trois onglets navigables — Location | Expérience | Chauffeur. Chaque onglet mène à la page listing dédiée (pas seulement un filtre local).
+
+3. **Une page par verticale** : `/[locale]/location`, `/[locale]/experience`, `/[locale]/ride` (détail `/[vertical]/[slug]`, checkout `/[vertical]/[slug]/checkout`).
+
+4. **API** : utiliser `GET /listings?type=...` (+ city/country ou lat/lng/radius). Ne pas mélanger les types sur une même page listing.
+
+5. **Header / nav** : liens vers /location, /experience, /ride.
+
+6. **i18n** : ajouter les clés pour onglets et labels (fr.json, en.json).
+
+En cas de doute, ouvrir **docs/LISTINGS_CANVAS.md** et s’aligner sur les sections concernées.

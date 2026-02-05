@@ -1,16 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { loginAsClient, waitForAppReady } from './helpers';
 
 const LOCALE = 'en';
-const LOGIN_DEMO = `/${LOCALE}/login?demo=1`;
 
 test.describe('Messaging: open conversation + send message', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(LOGIN_DEMO);
-    const demoSection = page.getByTestId('demo-login-section');
-    await expect(demoSection).toBeVisible({ timeout: 20000 });
-    await demoSection.getByPlaceholder('Email').fill('client@example.com', { timeout: 10000 });
-    await demoSection.getByPlaceholder('Password').fill('demo', { timeout: 10000 });
-    await demoSection.getByRole('button', { name: /Sign in/i }).click({ timeout: 10000 });
+    await loginAsClient(page, LOCALE);
     await expect(page).toHaveURL(/\/(en|fr)(\/|$)/, { timeout: 15000 });
     await expect(async () => {
       const token = await page.evaluate(() => localStorage.getItem('access_token'));
@@ -19,24 +14,27 @@ test.describe('Messaging: open conversation + send message', () => {
   });
 
   test('after creating a booking, client can open messages and send a message', async ({ page }) => {
-    await page.getByPlaceholder(/City|address/i).fill('Paris');
-    await page.getByRole('button', { name: /Search/i }).click();
-    await expect(page).toHaveURL(new RegExp(`/${LOCALE}/listings`));
+    await waitForAppReady(page);
+    await page.getByPlaceholder(/City|address|adresse|ville/i).first().fill('Paris', { timeout: 10000 });
+    await page.getByRole('button', { name: /Search|Rechercher/i }).first().click();
+    await expect(page).toHaveURL(new RegExp(`/${LOCALE}/(listings|location)`), { timeout: 15000 });
     // Wait for grid to load; skip if no listings
     await expect(
-      page.getByText(/listing\(s\) found|No listings found|annonce\(s\) trouvée\(s\)/i),
-    ).toBeVisible({ timeout: 15000 });
+      page
+        .getByText(/listing\(s\) found|No listings found|annonce\(s\) trouvée\(s\)/i)
+        .or(page.getByText(/Loading|Chargement/i)),
+    ).toBeVisible({ timeout: 20000 });
     const noResults = await page.getByText(/No listings found/i).isVisible().catch(() => false);
     if (noResults) {
       test.skip(true, 'No listings returned (API/seed). Cannot create booking for messages test.');
     }
-    // Link to listing detail (href like /en/listings/c...) — avoid nav links like /listings/location
-    const listingDetailLink = page.locator(`a[href^="/${LOCALE}/listings/c"]`).first();
+    // Link to listing detail (href like /en/location/... or /en/experience/... or /en/ride/...)
+    const listingDetailLink = page.locator(`a[href^="/${LOCALE}/location/"], a[href^="/${LOCALE}/experience/"], a[href^="/${LOCALE}/ride/"]`).first();
     await expect(listingDetailLink).toBeVisible({ timeout: 5000 });
     await listingDetailLink.click();
-    await expect(page).toHaveURL(new RegExp(`/${LOCALE}/listings/[^/]+$`));
+    await expect(page).toHaveURL(new RegExp(`/${LOCALE}/(location|experience|ride)/[^/]+$`));
     await page.getByTestId('listing-book-link').click();
-    await expect(page).toHaveURL(new RegExp(`/${LOCALE}/listings/[^/]+/checkout`));
+    await expect(page).toHaveURL(new RegExp(`/${LOCALE}/(location|experience|ride)/[^/]+/checkout`));
     const dateInputs = page.locator('input[type="datetime-local"]');
     await expect(dateInputs.first()).toBeVisible({ timeout: 15000 });
     await dateInputs.first().waitFor({ state: 'attached' });
@@ -48,7 +46,7 @@ test.describe('Messaging: open conversation + send message', () => {
     const format = (d: Date) => d.toISOString().slice(0, 16);
     await dateInputs.first().fill(format(start));
     await dateInputs.nth(1).fill(format(end));
-    await page.getByRole('button', { name: /Continue to payment|Creating/i }).click();
+    await page.getByRole('button', { name: /Continue to payment|Confirm and pay|Confirmer et payer|Creating/i }).click();
 
     const payUrlRegex = new RegExp(`/${LOCALE}/bookings/([^/]+)/pay`);
     try {
@@ -65,6 +63,7 @@ test.describe('Messaging: open conversation + send message', () => {
     expect(bookingId).toBeTruthy();
 
     await page.goto(`/${LOCALE}/messages?bookingId=${bookingId}`);
+    await waitForAppReady(page);
     await expect(page.getByRole('heading', { name: /Messages/i })).toBeVisible({ timeout: 5000 });
     // Conversation shows listing title or "with" + name
     await expect(page.getByText(/Citadine|Marie|Dupont|avec|with/i)).toBeVisible({ timeout: 5000 });

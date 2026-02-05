@@ -19,7 +19,7 @@ export function HomeSearchBar() {
     if (place.trim()) params.set('city', place.trim());
     if (startDate) params.set('startDate', startDate);
     if (returnDate) params.set('endDate', returnDate);
-    router.push(`/${locale}/listings/location?${params.toString()}`);
+    router.push(`/${locale}/location?${params.toString()}`);
   };
 
   return (

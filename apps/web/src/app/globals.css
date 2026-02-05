@@ -2,14 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Design system — Référence: Airbnb UI Kit (Figma)
+ * https://www.figma.com/design/66fdWaCXgdEJVhMqdcXx2Q/Airbnb-UI-Kit--Community-?node-id=208-2874
+ * Modifier ces variables après mise à jour du Figma (voir docs/DESIGN_SYSTEM.md).
+ */
 :root {
-  --background: #fafafa;
-  --foreground: #0a0a0a;
-  --muted: #737373;
-  --muted-foreground: #737373;
-  --border: #e5e5e5;
-  --primary: #0f766e;
-  --primary-foreground: #f0fdfa;
+  /* App (existant) */
+  --background: #ffffff;
+  --foreground: #222222;
+  --muted: #717171;
+  --muted-foreground: #717171;
+  --border: #ebebeb;
+  --primary: #ff385c;
+  --primary-foreground: #ffffff;
+
+  /* Airbnb UI Kit — à aligner avec le Figma */
+  --color-primary: #ff385c;        /* Rausch / Coral (CTA, liens, accent) */
+  --color-primary-hover: #e31c5f;
+  --color-primary-light: #fff1f2;
+  --color-black: #222222;
+  --color-gray-dark: #484848;
+  --color-gray: #717171;
+  --color-gray-light: #ebebeb;
+  --color-gray-bg: #f7f7f7;
+  --color-white: #ffffff;
+  --radius-button: 8px;
+  --radius-input: 8px;
+  --radius-pill: 9999px;
+  --radius-card: 12px;
+  --shadow-card: 0 6px 16px rgba(0, 0, 0, 0.12);
+  --shadow-dropdown: 0 6px 20px rgba(0, 0, 0, 0.15);
+  --shadow-search: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-search-hover: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 body {
