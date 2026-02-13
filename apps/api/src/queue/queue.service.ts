@@ -77,8 +77,33 @@ export class QueueService {
     });
   }
 
+  /** Password reset email (link to set new password). */
+  async enqueuePasswordResetEmail(toEmail: string, resetLink: string, locale = 'en') {
+    return this.addEmail({
+      to: toEmail,
+      subject: locale === 'fr' ? 'Réinitialiser votre mot de passe' : 'Reset your password',
+      template: 'password-reset',
+      locale,
+      variables: { resetLink },
+    });
+  }
+
   /** In-app notification (e.g. new message). */
   async enqueueNotification(userId: string, type: string, title: string, body?: string, data?: Record<string, unknown>) {
     return this.addNotification({ userId, type, title, body, data });
+  }
+
+  /** Host approval notification email (for manual bookings). */
+  async enqueueHostApprovalNotification(bookingId: string, hostEmail: string, approvalDeadline: Date | null, locale = 'en') {
+    return this.addEmail({
+      to: hostEmail,
+      subject: locale === 'fr' ? 'Réservation en attente d\'approbation' : 'Booking pending approval',
+      template: 'host-approval-required',
+      locale,
+      variables: {
+        bookingId,
+        approvalDeadline: approvalDeadline ? approvalDeadline.toISOString() : '',
+      },
+    });
   }
 }

@@ -20,7 +20,7 @@ export default defineConfig({
     process.env.CI || process.env.SKIP_WEBSERVER
       ? undefined
       : {
-          command: 'pnpm dev',
+          command: 'cd ../.. && pnpm dev',
           url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
           reuseExistingServer: true,
           timeout: 120_000,

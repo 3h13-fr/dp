@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
+import { ConfigModule } from '@nestjs/config';
 import { VinValidationService } from './vin-validation.service';
 import { MakeModelService } from './make-model.service';
 import { AnomalyDetectionService } from './anomaly-detection.service';
@@ -7,9 +8,12 @@ import { VehicleSpecService } from './vehicle-spec.service';
 import { VehicleDisplayService } from './vehicle-display.service';
 import { VehicleService } from './vehicle.service';
 import { VehiclesController } from './vehicles.controller';
+import { NhtsaSpecProvider } from './nhtsa-spec-provider.service';
+import { VinSpecsService } from './vin-specs.service';
+import { NhtsaSyncModule } from './nhtsa-sync.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, ConfigModule, NhtsaSyncModule],
   controllers: [VehiclesController],
   providers: [
     VinValidationService,
@@ -18,6 +22,8 @@ import { VehiclesController } from './vehicles.controller';
     VehicleSpecService,
     VehicleDisplayService,
     VehicleService,
+    NhtsaSpecProvider,
+    VinSpecsService,
   ],
   exports: [
     VinValidationService,
@@ -26,6 +32,7 @@ import { VehiclesController } from './vehicles.controller';
     VehicleDisplayService,
     VehicleSpecService,
     AnomalyDetectionService,
+    VinSpecsService,
   ],
 })
 export class VehiclesModule {}

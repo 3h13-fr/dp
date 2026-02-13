@@ -60,10 +60,18 @@ export class StripeService {
     return pi;
   }
 
-  /** Capture a manual PaymentIntent (e.g. caution charge after incident) */
-  async capturePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent | null> {
+  /** Capture a manual PaymentIntent (e.g. caution charge after incident). Optional amount for partial capture (in currency units). */
+  async capturePaymentIntent(
+    paymentIntentId: string,
+    amount?: number,
+    currency?: string,
+  ): Promise<Stripe.PaymentIntent | null> {
     if (!this.client) return null;
-    return this.client.paymentIntents.capture(paymentIntentId);
+    const params: Stripe.PaymentIntentCaptureParams = {};
+    if (amount != null && currency) {
+      params.amount_to_capture = this.toCents(amount, currency);
+    }
+    return this.client.paymentIntents.capture(paymentIntentId, params);
   }
 
   /** Cancel a PaymentIntent (e.g. release caution without charging) */
@@ -84,6 +92,33 @@ export class StripeService {
       params.amount = this.toCents(amount, currency);
     }
     return this.client.refunds.create(params);
+  }
+
+  /** Create a transfer to host's Stripe account */
+  async createTransferToHost(params: {
+    amount: number;
+    currency: string;
+    destination: string; // stripeAccountId
+    metadata: { bookingId: string; [k: string]: string };
+  }): Promise<Stripe.Transfer | null> {
+    if (!this.client) return null;
+    const amountInCents = this.toCents(params.amount, params.currency);
+    if (amountInCents < 1) return null;
+
+    const transfer = await this.client.transfers.create({
+      amount: amountInCents,
+      currency: params.currency.toLowerCase(),
+      destination: params.destination,
+      metadata: params.metadata,
+    });
+    return transfer;
+  }
+
+  /** Reverse a transfer (usage manuel admin pour litiges uniquement) */
+  async reverseTransfer(transferId: string): Promise<Stripe.TransferReversal | null> {
+    if (!this.client) return null;
+    const reversal = await this.client.transfers.createReversal(transferId);
+    return reversal;
   }
 
   /** Construct webhook event (verify signature) */

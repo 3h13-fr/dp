@@ -5,7 +5,7 @@ export class AppController {
   @Get()
   root() {
     return {
-      name: 'Mobility Platform API',
+      name: 'DrivePark API',
       version: '1.0',
       docs: '/health',
       endpoints: {

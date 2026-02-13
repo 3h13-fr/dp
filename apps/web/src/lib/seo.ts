@@ -18,8 +18,16 @@ export function renderSeoTemplate(
   return result;
 }
 
-/** Détermine si une page ville/verticale doit être indexée (à enrichir avec agrégats) */
-export function isIndexable(_cityId: string | null, _vertical: string, _offerCount?: number): boolean {
-  // TODO: seuil minimal offerCount, seoPriority
+const MIN_OFFERS_INDEXABLE = 3;
+
+/** Détermine si une page ville/verticale doit être indexée (seuil minimal offerCount, seoPriority). */
+export function isIndexable(
+  _cityId: string | null,
+  _vertical: string,
+  offerCount?: number,
+  seoPriority?: number
+): boolean {
+  if (seoPriority != null && seoPriority > 0) return true;
+  if (offerCount != null && offerCount < MIN_OFFERS_INDEXABLE) return false;
   return true;
 }

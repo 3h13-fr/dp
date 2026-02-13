@@ -20,6 +20,11 @@ import { AvailabilityModule } from './availability/availability.module';
 import { GeoModule } from './geo/geo.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
 import { KycModule } from './kyc/kyc.module';
+import { InsuranceModule } from './insurance/insurance.module';
+import { CategoriesModule } from './categories/categories.module';
+import { MarketsModule } from './markets/markets.module';
+import { InspectionModule } from './inspection/inspection.module';
+import { DamageClaimModule } from './damage-claim/damage-claim.module';
 
 @Module({
   controllers: [AppController],
@@ -38,7 +43,12 @@ import { KycModule } from './kyc/kyc.module';
     AvailabilityModule,
     GeoModule,
     KycModule,
+    InsuranceModule,
+    CategoriesModule,
+    MarketsModule,
     BookingsModule,
+    InspectionModule,
+    DamageClaimModule,
     PaymentsModule,
     MessagesModule,
     ReviewsModule,

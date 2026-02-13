@@ -25,6 +25,7 @@ import { EventsModule } from '../events/events.module';
     BullModule.registerQueue(
       { name: 'email' },
       { name: 'notification' },
+      { name: 'nhtsa-sync' },
     ),
   ],
   providers: [EmailProcessor, NotificationProcessor, QueueService],

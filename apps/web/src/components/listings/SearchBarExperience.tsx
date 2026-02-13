@@ -3,24 +3,43 @@
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { AddressAutocomplete, type AddressSuggestion } from '@/components/AddressAutocomplete';
+import { useActiveMarketCountryCodes } from '@/hooks/useActiveMarketCountryCodes';
 
 export function SearchBarExperience() {
   const t = useTranslations('searchExperience');
   const router = useRouter();
+  const countryCodes = useActiveMarketCountryCodes();
   const locale = useLocale();
   const searchParams = useSearchParams();
-  const [place, setPlace] = useState(searchParams.get('city') ?? searchParams.get('country') ?? '');
+  const [place, setPlace] = useState(searchParams.get('city') ?? searchParams.get('q') ?? '');
+  const [selectedAddress, setSelectedAddress] = useState<AddressSuggestion | null>(null);
   const [date, setDate] = useState(searchParams.get('date') ?? '');
   const [duration, setDuration] = useState(searchParams.get('duration') ?? '');
+
+  const handleSelect = (suggestion: AddressSuggestion) => {
+    setSelectedAddress(suggestion);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const params = new URLSearchParams();
     params.set('type', 'MOTORIZED_EXPERIENCE');
-    if (place.trim()) params.set('city', place.trim());
+    
+    if (selectedAddress) {
+      // Use coordinates for precise geographic search
+      params.set('lat', selectedAddress.latitude.toString());
+      params.set('lng', selectedAddress.longitude.toString());
+      if (selectedAddress.city) params.set('city', selectedAddress.city);
+      if (selectedAddress.country) params.set('country', selectedAddress.country);
+    } else if (place.trim()) {
+      // Fallback to text search
+      params.set('city', place.trim());
+    }
+    
     if (date) params.set('date', date);
     if (duration.trim()) params.set('duration', duration.trim());
-    router.push(`/${locale}/listings/experience?${params.toString()}`);
+    router.push(`/${locale}/experience?${params.toString()}`);
   };
 
   return (
@@ -30,12 +49,12 @@ export function SearchBarExperience() {
     >
       <label className="flex flex-1 min-w-[200px] flex-col gap-1">
         <span className="text-sm text-muted-foreground">{t('placeholder')}</span>
-        <input
-          type="text"
+        <AddressAutocomplete
           value={place}
-          onChange={(e) => setPlace(e.target.value)}
-          className="rounded-lg border border-border bg-background px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          onChange={setPlace}
+          onSelect={handleSelect}
           placeholder={t('placeholder')}
+          allowedCountryCodes={countryCodes.length > 0 ? countryCodes : undefined}
         />
       </label>
       <label className="flex flex-col gap-1">

@@ -5,6 +5,15 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: [],
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'drivepark.net',
+        pathname: '/storage/**',
+      },
+    ],
+  },
   // Avoid missing vendor-chunks in pnpm monorepo
   experimental: {
     serverComponentsExternalPackages: ['next-intl', '@formatjs/icu-messageformat-parser'],

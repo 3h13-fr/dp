@@ -68,6 +68,20 @@ function renderOtp(locale: string, variables: Record<string, string> | undefined
   };
 }
 
+function renderPasswordReset(locale: string, variables: Record<string, string> | undefined): { subject: string; html: string } {
+  const resetLink = variables?.resetLink ?? '#';
+  if (locale === 'fr') {
+    return {
+      subject: 'Réinitialiser votre mot de passe',
+      html: `<p>Vous avez demandé une réinitialisation de mot de passe.</p><p><a href="${resetLink}">Cliquez ici pour définir un nouveau mot de passe</a>.</p><p>Ce lien expire dans 1 heure. Si vous n'avez pas fait cette demande, ignorez cet e-mail.</p>`,
+    };
+  }
+  return {
+    subject: 'Reset your password',
+    html: `<p>You requested a password reset.</p><p><a href="${resetLink}">Click here to set a new password</a>.</p><p>This link expires in 1 hour. If you did not request this, please ignore this email.</p>`,
+  };
+}
+
 @Processor('email')
 export class EmailProcessor extends WorkerHost {
   private readonly logger = new Logger(EmailProcessor.name);
@@ -117,6 +131,10 @@ export class EmailProcessor extends WorkerHost {
       html = rendered.html;
     } else if (template === 'otp') {
       const rendered = renderOtp(effectiveLocale, variables);
+      subject = rendered.subject;
+      html = rendered.html;
+    } else if (template === 'password-reset') {
+      const rendered = renderPasswordReset(effectiveLocale, variables);
       subject = rendered.subject;
       html = rendered.html;
     } else {

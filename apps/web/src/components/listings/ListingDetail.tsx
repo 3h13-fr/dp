@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { getListingTitle } from '@/lib/listings';
+import { getListingTitle, getListingCountryCode } from '@/lib/listings';
+import { useActiveMarkets } from '@/hooks/useActiveMarketCountryCodes';
+import { ListingReviews, ListingReviewsSection } from './ListingReviews';
+import { S3Image } from '@/components/S3Image';
 
 type Listing = {
   id: string;
@@ -17,11 +20,15 @@ type Listing = {
   type?: string;
   photos?: Array<{ url: string; order?: number }>;
   host?: { id: string; firstName?: string | null; lastName?: string | null };
+  cityRef?: { country?: { code?: string } } | null;
 };
 
 export function ListingDetail({ listing, vertical = 'location' }: { listing: Listing; vertical?: 'location' | 'experience' | 'ride' }) {
   const locale = useLocale();
   const t = useTranslations('listing');
+  const { bookingsAllowedCountryCodes } = useActiveMarkets();
+  const listingCountryCode = getListingCountryCode(listing);
+  const canBook = listingCountryCode != null && bookingsAllowedCountryCodes.includes(listingCountryCode);
   const price = listing.pricePerDay != null
     ? (typeof listing.pricePerDay === 'object' && typeof listing.pricePerDay.toNumber === 'function'
         ? listing.pricePerDay.toNumber()
@@ -33,7 +40,7 @@ export function ListingDetail({ listing, vertical = 'location' }: { listing: Lis
     <article className="space-y-6">
       <div className="overflow-hidden rounded-xl bg-muted">
         {photo?.url ? (
-          <img
+          <S3Image
             src={photo.url}
             alt={getListingTitle(listing)}
             className="h-80 w-full object-cover"
@@ -51,10 +58,14 @@ export function ListingDetail({ listing, vertical = 'location' }: { listing: Lis
             {[listing.city, listing.country].filter(Boolean).join(', ')}
           </p>
         )}
+        <div className="mt-2">
+          <ListingReviews listingId={listing.id} />
+        </div>
       </div>
       {listing.description && (
         <p className="whitespace-pre-wrap text-foreground">{listing.description}</p>
       )}
+      <ListingReviewsSection listingId={listing.id} />
       {listing.host && (
         <p className="text-sm text-muted-foreground">
           {t('host')}: {[listing.host.firstName, listing.host.lastName].filter(Boolean).join(' ') || '—'}
@@ -66,13 +77,22 @@ export function ListingDetail({ listing, vertical = 'location' }: { listing: Lis
         </p>
       )}
       <div>
-        <Link
-          href={`/${locale}/${vertical}/${listing.slug ?? listing.id}/checkout`}
-          className="inline-block rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground hover:opacity-90"
-          data-testid="listing-book-link"
-        >
-          {t('book')}
-        </Link>
+        {canBook ? (
+          <Link
+            href={`/${locale}/${vertical}/${listing.slug ?? listing.id}/checkout`}
+            className="inline-block rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground hover:bg-primary/90"
+            data-testid="listing-book-link"
+          >
+            {t('book')}
+          </Link>
+        ) : (
+          <span
+            className="inline-block cursor-not-allowed rounded-lg bg-muted px-6 py-3 font-medium text-muted-foreground opacity-70"
+            data-testid="listing-book-link-disabled"
+          >
+            {t('reservationsUnavailable')}
+          </span>
+        )}
       </div>
     </article>
   );

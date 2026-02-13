@@ -16,12 +16,16 @@ test.describe('Booking: cancel → status + refund', () => {
     await expect(
       page.getByText(/listing\(s\) found|No listings found|annonce\(s\) trouvée\(s\)|Loading|Chargement/i),
     ).toBeVisible({ timeout: 20000 });
-    await page.getByRole('link', { name: /Citadine/i }).first().click();
+    await page.getByRole('link', { name: /Renault Clio|Clio/i }).first().click();
     await page.getByTestId('listing-book-link').click();
     await expect(page).toHaveURL(new RegExp(`/${LOCALE}/(location|experience|ride)/[^/]+/checkout`));
+
+    await waitForAppReady(page);
+    const summary = page.getByTestId('checkout-summary').first();
+    await expect(summary).toBeVisible({ timeout: 15000 });
+
     const dateInputs = page.locator('input[type="datetime-local"]');
     await expect(dateInputs.first()).toBeVisible({ timeout: 15000 });
-    await dateInputs.first().waitFor({ state: 'attached' });
 
     const start = new Date();
     start.setDate(start.getDate() + 5);
@@ -30,7 +34,14 @@ test.describe('Booking: cancel → status + refund', () => {
     const format = (d: Date) => d.toISOString().slice(0, 16);
     await dateInputs.first().fill(format(start));
     await dateInputs.nth(1).fill(format(end));
-    await page.getByRole('button', { name: /Continue to payment|Confirm and pay|Confirmer et payer|Creating/i }).click();
+    await page.waitForTimeout(1000);
+    await waitForAppReady(page);
+    const continueBtn = page.getByRole('button', {
+      name: /Continue to payment|Confirm and pay|Confirmer et payer|Creating|Next|Suivant/i,
+    }).first();
+    await expect(continueBtn).toBeVisible({ timeout: 15000 });
+    await expect(continueBtn).toBeEnabled({ timeout: 5000 });
+    await continueBtn.click();
 
     // Wait for redirect to pay page (API can be slow or fail on availability)
     const payUrlRegex = new RegExp(`/${LOCALE}/bookings/([^/]+)/pay`);

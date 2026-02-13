@@ -1,7 +1,9 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { IsString, IsISO8601, IsOptional, IsObject, MinLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsString, IsISO8601, IsOptional, IsObject, MinLength, IsInt, Min, Max } from 'class-validator';
 import { BookingsService } from './bookings.service';
+import { ReviewsService } from '../reviews/reviews.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { User } from 'database';
 import { BookingStatus } from 'database';
@@ -27,9 +29,24 @@ class ReportIssueDto {
   message: string;
 }
 
+class CreateReviewDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating: number;
+
+  @IsOptional()
+  @IsString()
+  comment?: string;
+}
+
 @Controller('bookings')
 export class BookingsController {
-  constructor(private bookings: BookingsService) {}
+  constructor(
+    private bookings: BookingsService,
+    private reviews: ReviewsService,
+  ) {}
 
   @UseGuards(AuthGuard('jwt'))
   @Post()
@@ -94,5 +111,34 @@ export class BookingsController {
     @Body() body: ReportIssueDto,
   ): Promise<{ received: boolean }> {
     return this.bookings.reportIssue(id, user.id, body.message ?? '');
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post(':id/review')
+  createReview(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: CreateReviewDto,
+  ): Promise<unknown> {
+    return this.reviews.createForBooking(id, user.id, {
+      rating: body.rating,
+      comment: body.comment,
+    });
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post(':id/approve')
+  async approve(@Param('id') bookingId: string, @CurrentUser() user: User) {
+    return this.bookings.approve(bookingId, user.id);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post(':id/reject')
+  async reject(
+    @Param('id') bookingId: string,
+    @CurrentUser() user: User,
+    @Body() body: { reason?: string },
+  ) {
+    return this.bookings.reject(bookingId, user.id, body.reason);
   }
 }

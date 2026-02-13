@@ -26,10 +26,18 @@ test.describe('Admin: validate / moderate listing', () => {
     await expect(select).toBeVisible();
     const currentValue = await select.inputValue();
     const otherStatus = currentValue === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
+
+    const acceptSuspensionPrompt = () => {
+      page.once('dialog', (dialog) => dialog.accept('E2E test suspension reason'));
+    };
+
+    if (otherStatus === 'SUSPENDED') acceptSuspensionPrompt();
     await select.selectOption(otherStatus);
-    await expect(select).toHaveValue(otherStatus);
+    await expect(select).toHaveValue(otherStatus, { timeout: 15000 });
+
+    if (currentValue === 'SUSPENDED') acceptSuspensionPrompt();
     await select.selectOption(currentValue);
-    await expect(select).toHaveValue(currentValue);
+    await expect(select).toHaveValue(currentValue, { timeout: 15000 });
   });
 
   test('admin can reach users page', async ({ page }) => {

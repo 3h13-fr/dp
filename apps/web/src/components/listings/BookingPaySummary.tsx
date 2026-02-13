@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { getListingTitle } from '@/lib/listings';
+import { S3Image } from '@/components/S3Image';
 
 const LISTING_TYPE_TO_VERTICAL: Record<string, 'location' | 'experience' | 'ride'> = {
   CAR_RENTAL: 'location',
@@ -73,7 +74,7 @@ export function BookingPaySummary({ booking }: BookingPaySummaryProps) {
             href={`/${locale}/${vertical}/${slug}`}
             className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-[var(--color-gray-bg)]"
           >
-            <img
+            <S3Image
               src={firstPhoto.url}
               alt=""
               className="h-full w-full object-cover"

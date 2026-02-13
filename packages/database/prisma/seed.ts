@@ -3,7 +3,20 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
-const DEMO_PASSWORD = 'demo'; // même mot de passe pour tous les comptes de test
+const DEMO_PASSWORD = 'demodemo';
+
+/** Converts payload for Listing update (Prisma 5+): relation IDs → connect, strip invalid fields */
+function toListingUpdateData(
+  data: Record<string, unknown> & { hostId?: string; vehicleId?: string; cityId?: string; category?: unknown },
+): Record<string, unknown> {
+  const { hostId, vehicleId, cityId, category, ...rest } = data;
+  const result: Record<string, unknown> = { ...rest };
+  if (hostId) result.host = { connect: { id: hostId } };
+  if (vehicleId) result.vehicle = { connect: { id: vehicleId } };
+  if (cityId) result.cityRef = { connect: { id: cityId } };
+  // category is legacy; Listing uses categories (many-to-many) not scalar category
+  return result;
+} // 8+ chars for change-password flow; same for all test accounts
 
 async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
@@ -31,6 +44,22 @@ async function main() {
     },
   });
   console.log('Host (partner):', host.email);
+
+  // KYC PENDING_REVIEW for host (for E2E: admin approves → host sees APPROVED)
+  const kycPlaceholderUrl = 'https://via.placeholder.com/400x300?text=ID';
+  await prisma.kycVerification.upsert({
+    where: { userId: host.id },
+    update: { status: 'PENDING_REVIEW', firstName: 'Marie', lastName: 'Dupont', idDocUrl: kycPlaceholderUrl, reviewReason: 'DOUBTFUL' },
+    create: {
+      userId: host.id,
+      status: 'PENDING_REVIEW',
+      firstName: 'Marie',
+      lastName: 'Dupont',
+      idDocUrl: kycPlaceholderUrl,
+      reviewReason: 'DOUBTFUL',
+    },
+  });
+  console.log('KYC: host PENDING_REVIEW (E2E)');
 
   const client = await prisma.user.upsert({
     where: { email: 'client@example.com' },
@@ -156,7 +185,6 @@ async function main() {
     data: {
       description: string;
       pricePerDay: number;
-      category: string;
       transmission: string;
       fuelType: string;
       seats: number;
@@ -177,10 +205,11 @@ async function main() {
       cityId: paris.id,
       city: 'Paris',
       country: 'France',
+      latitude: paris.latitude ?? 48.8566, // Coordonnées de Paris
+      longitude: paris.longitude ?? 2.3522,
       pricePerDay: data.pricePerDay,
       currency: 'EUR',
       caution: 500,
-      category: data.category,
       transmission: data.transmission,
       fuelType: data.fuelType,
       seats: data.seats,
@@ -190,7 +219,7 @@ async function main() {
     if (existing) {
       await prisma.listing.update({
         where: { id: existing.id },
-        data: { ...payload, slug: newSlug },
+        data: toListingUpdateData({ ...payload, slug: newSlug }),
       });
     } else {
       const byNew = await prisma.listing.findUnique({ where: { slug: newSlug } });
@@ -199,7 +228,7 @@ async function main() {
       } else {
         await prisma.listing.update({
           where: { id: byNew.id },
-          data: payload,
+          data: toListingUpdateData(payload),
         });
       }
     }
@@ -232,16 +261,19 @@ async function main() {
       cityId: paris.id,
       city: 'Paris',
       country: 'France',
+      latitude: paris.latitude ?? 48.8566, // Coordonnées de Paris
+      longitude: paris.longitude ?? 2.3522,
       pricePerDay: data.pricePerDay,
       currency: 'EUR',
       seats: data.seats,
       doors: data.doors ?? 4,
       luggage: data.luggage ?? 3,
     };
+    // Note: category removed - Listing uses categories (many-to-many) not scalar
     if (existing) {
       await prisma.listing.update({
         where: { id: existing.id },
-        data: { ...payload, slug: newSlug },
+        data: toListingUpdateData({ ...payload, slug: newSlug }),
       });
     } else {
       const byNew = await prisma.listing.findUnique({ where: { slug: newSlug } });
@@ -250,7 +282,7 @@ async function main() {
       } else {
         await prisma.listing.update({
           where: { id: byNew.id },
-          data: payload,
+          data: toListingUpdateData(payload),
         });
       }
     }
@@ -281,7 +313,6 @@ async function main() {
     {
       description: 'Voiture économique idéale pour la ville. Climatisation, Bluetooth.',
       pricePerDay: 45,
-      category: 'economy',
       transmission: 'manual',
       fuelType: 'petrol',
       seats: 5,
@@ -316,7 +347,6 @@ async function main() {
     {
       description: 'Grand SUV pour famille ou groupe. Climatisation, coffre spacieux.',
       pricePerDay: 85,
-      category: 'suv',
       transmission: 'automatic',
       fuelType: 'diesel',
       seats: 7,
@@ -351,7 +381,6 @@ async function main() {
     {
       description: 'Véhicule électrique en centre-ville. Idéal pour petits trajets.',
       pricePerDay: 55,
-      category: 'economy',
       transmission: 'automatic',
       fuelType: 'electric',
       seats: 4,
@@ -386,7 +415,6 @@ async function main() {
     {
       description: 'Berline récente, climatisation, régulateur. Idéal longue distance.',
       pricePerDay: 65,
-      category: 'luxury',
       transmission: 'automatic',
       fuelType: 'petrol',
       seats: 5,
@@ -415,7 +443,7 @@ async function main() {
   });
   await prisma.listing.upsert({
     where: { slug: 'volkswagen-golf-2020-paris' },
-    update: { status: 'ACTIVE', hostId: host.id, cityId: paris.id, vehicleId: vehicleGolf.id },
+    update: toListingUpdateData({ status: 'ACTIVE', hostId: host.id, cityId: paris.id, vehicleId: vehicleGolf.id }),
     create: {
       type: 'CAR_RENTAL',
       hostId: host.id,
@@ -431,7 +459,6 @@ async function main() {
       pricePerDay: 52,
       currency: 'EUR',
       caution: 600,
-      category: 'economy',
       transmission: 'manual',
       fuelType: 'petrol',
       seats: 5,
@@ -590,10 +617,36 @@ async function main() {
   }
   console.log('Vehicle listings: placeholder photos added');
 
+  // ——— One COMPLETED booking for client (for E2E review flow) ———
+  const listingClio = await prisma.listing.findUnique({ where: { slug: 'renault-clio-2019-paris' } });
+  if (listingClio) {
+    const pastStart = new Date();
+    pastStart.setDate(pastStart.getDate() - 10);
+    const pastEnd = new Date(pastStart);
+    pastEnd.setDate(pastEnd.getDate() + 2);
+    await prisma.booking.upsert({
+      where: { id: 'seed-booking-completed-review-e2e' },
+      update: { status: 'COMPLETED' },
+      create: {
+        id: 'seed-booking-completed-review-e2e',
+        listingId: listingClio.id,
+        guestId: client.id,
+        hostId: host.id,
+        status: 'COMPLETED',
+        startAt: pastStart,
+        endAt: pastEnd,
+        totalAmount: 90,
+        currency: 'EUR',
+        cautionAmount: 500,
+      },
+    });
+    console.log('Seed: COMPLETED booking for client (review E2E)');
+  }
+
   const slugExperience = 'balade-2cv-paris';
   const listingExperience = await prisma.listing.upsert({
     where: { slug: slugExperience },
-    update: { status: 'ACTIVE', hostId: host.id, cityId: paris.id },
+    update: toListingUpdateData({ status: 'ACTIVE', hostId: host.id, cityId: paris.id }),
     create: {
       type: 'MOTORIZED_EXPERIENCE',
       hostId: host.id,
@@ -621,7 +674,7 @@ async function main() {
   for (const exp of experiences) {
     await prisma.listing.upsert({
       where: { slug: exp.slug },
-      update: { status: 'ACTIVE', hostId: host.id, cityId: paris.id },
+      update: toListingUpdateData({ status: 'ACTIVE', hostId: host.id, cityId: paris.id }),
       create: {
         type: 'MOTORIZED_EXPERIENCE',
         hostId: host.id,
@@ -641,6 +694,54 @@ async function main() {
     console.log('Listing ACTIVE (expérience):', exp.title);
   }
 
+  // ——— Market France (FR) ———
+  const marketFrance = await prisma.market.upsert({
+    where: { countryCode: 'FR' },
+    update: {},
+    create: {
+      countryCode: 'FR',
+      displayName: 'France',
+      status: 'ACTIVE',
+      visibleToClient: true,
+      bookingsAllowed: true,
+      defaultCurrency: 'EUR',
+      defaultLanguage: 'fr',
+      allowedLanguages: ['fr', 'en'],
+      allowedCurrencies: ['EUR'],
+      paymentProvider: 'Stripe',
+      paymentMethods: ['card', 'apple_pay', 'google_pay'],
+      commissionPercent: 15,
+      taxesEnabled: true,
+      vatIncluded: true,
+      defaultVatRate: 20,
+      seoIndexable: true,
+    },
+  });
+  console.log('Market FR (France) created/upserted');
+
+  // Link existing insurance policies compatible with FR
+  const policies = await prisma.insurancePolicy.findMany({ where: { status: 'ACTIVE' } });
+  for (const p of policies) {
+    const crit = (p.eligibilityCriteria as { allowedCountries?: string[] }) || {};
+    const allowed = crit.allowedCountries || [];
+    const isCompatible = allowed.length === 0 || allowed.some((c: string) => c.toLowerCase() === 'fr' || c === 'FR');
+    if (isCompatible) {
+      await prisma.marketInsurancePolicy.upsert({
+        where: {
+          marketId_insurancePolicyId: { marketId: marketFrance.id, insurancePolicyId: p.id },
+        },
+        update: {},
+        create: { marketId: marketFrance.id, insurancePolicyId: p.id, isDefault: false },
+      });
+    }
+  }
+  if (policies.length > 0) {
+    console.log('Market FR: linked', policies.filter((p) => {
+      const crit = (p.eligibilityCriteria as { allowedCountries?: string[] }) || {};
+      const allowed = crit.allowedCountries || [];
+      return allowed.length === 0 || allowed.some((c: string) => c.toLowerCase() === 'fr' || c === 'FR');
+    }).length, 'insurance policies');
+  }
 }
 
 main()

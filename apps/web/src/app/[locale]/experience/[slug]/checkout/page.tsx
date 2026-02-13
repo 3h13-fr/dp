@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { CheckoutForm } from '@/components/listings/CheckoutForm';
+import { CheckoutPageContent } from '@/components/checkout/CheckoutPageContent';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -20,9 +20,5 @@ export default async function ExperienceCheckoutPage({
   const listing = await getListing(slug);
   if (!listing) notFound();
   if (listing.type !== 'MOTORIZED_EXPERIENCE') notFound();
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <CheckoutForm listing={listing} vertical="experience" />
-    </div>
-  );
+  return <CheckoutPageContent listing={listing} vertical="experience" />;
 }

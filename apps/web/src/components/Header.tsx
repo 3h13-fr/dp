@@ -1,15 +1,20 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { useTranslations } from 'next-intl';
 import { clsx } from 'clsx';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { getToken, clearToken } from '@/lib/api';
-import { SparkIcon } from '@/components/icons/SparkIcon';
+import Image from 'next/image';
 import { HeaderSearchBar } from '@/components/HeaderSearchBar';
+import { HeaderCategories } from '@/components/HeaderCategories';
 import { SearchBottomSheet } from '@/components/SearchBottomSheet';
+import { MobileSearchFlow } from '@/components/search/MobileSearchFlow';
+import { FiltersModal } from '@/components/filters/FiltersModal';
+import { FiltersSheet } from '@/components/filters/FiltersSheet';
+import { useAuthModal } from '@/contexts/AuthModalContext';
 
 function NavMenuIcon({ name }: { name: 'key' | 'help' | 'headset' | 'lifebuoy' | 'login' | 'user' | 'heart' | 'car' | 'bell' | 'chat' | 'logout' }) {
   const icons = {
@@ -75,18 +80,28 @@ function NavMenuIcon({ name }: { name: 'key' | 'help' | 'headset' | 'lifebuoy' |
 export function Header() {
   const t = useTranslations('nav');
   const tSearch = useTranslations('headerSearch');
+  const tListing = useTranslations('listings');
   const pathname = usePathname();
   const router = useRouter();
   const locale = useLocale();
+  const searchParams = useSearchParams();
+  const { openLogin } = useAuthModal();
   const pathWithoutLocale = pathname.replace(new RegExp(`^/${locale}`), '') || '/';
   const [isLoggedIn, setLoggedIn] = useState(false);
   const [role, setRole] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchSheetOpen, setSearchSheetOpen] = useState(false);
+  const [searchSheetListingType, setSearchSheetListingType] = useState<'location' | 'experience' | 'ride'>('location');
+  const [filtersModalOpen, setFiltersModalOpen] = useState(false);
+  const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
+  const filtersButtonRef = useRef<HTMLButtonElement>(null);
 
   // #region agent log
   useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/d4d80e1e-130a-4236-9b97-782fd171848c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Header.tsx',message:'Header mounted',data:{pathname},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4'})}).catch(()=>{});
+    // Désactiver les appels analytics en développement pour éviter les erreurs dans la console
+    if (process.env.NODE_ENV === 'production') {
+      fetch('http://127.0.0.1:7242/ingest/d4d80e1e-130a-4236-9b97-782fd171848c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Header.tsx',message:'Header mounted',data:{pathname},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4'})}).catch(()=>{});
+    }
   }, [pathname]);
   // #endregion
 
@@ -139,6 +154,118 @@ export function Header() {
   const isActive = (href: string) =>
     pathWithoutLocale === href || pathWithoutLocale.startsWith(href + '/');
 
+  // Déterminer si on doit afficher la barre de recherche
+  const shouldShowSearchBar = pathWithoutLocale === '/' ||
+    pathWithoutLocale === '/location' ||
+    pathWithoutLocale.startsWith('/location/') ||
+    pathWithoutLocale === '/experience' ||
+    pathWithoutLocale.startsWith('/experience/') ||
+    pathWithoutLocale === '/ride' ||
+    pathWithoutLocale.startsWith('/ride/');
+
+  // Déterminer si on doit afficher le bouton filtres (uniquement sur les pages de liste, pas homepage ni détail)
+  const shouldShowFiltersButton = pathWithoutLocale === '/location' ||
+    pathWithoutLocale === '/experience' ||
+    pathWithoutLocale === '/ride';
+
+  // Déterminer si on doit afficher les catégories (uniquement sur homepage et /location)
+  const shouldShowCategories = pathWithoutLocale === '/' || pathWithoutLocale === '/location';
+
+  // Déterminer le type de listing depuis le pathname
+  const getListingTypeFromPath = (): 'CAR_RENTAL' | 'MOTORIZED_EXPERIENCE' | 'CHAUFFEUR' => {
+    if (pathWithoutLocale === '/location' || pathWithoutLocale.startsWith('/location/')) {
+      return 'CAR_RENTAL';
+    }
+    if (pathWithoutLocale === '/experience' || pathWithoutLocale.startsWith('/experience/')) {
+      return 'MOTORIZED_EXPERIENCE';
+    }
+    if (pathWithoutLocale === '/ride' || pathWithoutLocale.startsWith('/ride/')) {
+      return 'CHAUFFEUR';
+    }
+    return 'CAR_RENTAL'; // Default
+  };
+
+  const currentListingType = getListingTypeFromPath();
+
+  // Fonction pour formater la localisation
+  const formatLocationSummary = (city: string | null, country: string | null): string | null => {
+    const parts = [city, country].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : null;
+  };
+
+  // Fonction pour formater les dates
+  const formatDatesSummary = (
+    startDate: string | null,
+    endDate: string | null,
+    date: string | null,
+    isLocation: boolean,
+  ): string | null => {
+    if (isLocation) {
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const startFormatted = start.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        });
+        const endFormatted = end.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        });
+        return `${startFormatted} · ${endFormatted}`;
+      }
+    } else {
+      if (date) {
+        const dateObj = new Date(date);
+        return dateObj.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        });
+      }
+    }
+    return null;
+  };
+
+  // Lire les paramètres de recherche depuis l'URL
+  const city = searchParams.get('city');
+  const country = searchParams.get('country');
+  const startDate = searchParams.get('startDate');
+  const endDate = searchParams.get('endDate');
+  const date = searchParams.get('date'); // Pour experience/ride
+
+  // Déterminer si on est sur une page location
+  const isLocationPage = pathWithoutLocale === '/location' || pathWithoutLocale.startsWith('/location/');
+
+  // Formater le résumé de recherche
+  const locationSummary = useMemo(
+    () => formatLocationSummary(city, country),
+    [city, country],
+  );
+  const datesSummary = useMemo(
+    () => formatDatesSummary(startDate, endDate, date, isLocationPage),
+    [startDate, endDate, date, isLocationPage, locale],
+  );
+
+  // Déterminer le texte à afficher dans le bouton mobile
+  const mobileSearchButtonText = useMemo(() => {
+    if (locationSummary || datesSummary) {
+      return (
+        <div className="flex flex-col items-start gap-0.5 min-w-0 flex-1">
+          {locationSummary && (
+            <span className="truncate text-sm text-ds-gray leading-tight">{locationSummary}</span>
+          )}
+          {datesSummary && (
+            <span className="truncate text-sm text-ds-gray leading-tight">{datesSummary}</span>
+          )}
+        </div>
+      );
+    }
+    return <span className="truncate text-sm text-ds-gray">{tSearch('searchTriggerLabel')}</span>;
+  }, [locationSummary, datesSummary, tSearch]);
+
   const menuItemClass = 'flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-neutral-800 hover:bg-neutral-50';
   const menuDivider = <div className="border-t border-neutral-100" />;
 
@@ -157,7 +284,7 @@ export function Header() {
           </Link>
           <Link href={`${localePrefix}/bookings`} className={menuItemClass} onClick={() => setMenuOpen(false)}>
             <NavMenuIcon name="car" />
-            {t('reservations')}
+            {t('myBookings')}
           </Link>
           <Link href={`${localePrefix}/messages`} className={menuItemClass} onClick={() => setMenuOpen(false)}>
             <NavMenuIcon name="chat" />
@@ -190,7 +317,7 @@ export function Header() {
         <NavMenuIcon name="headset" />
         {t('assistanceDrivePark')}
       </Link>
-      <Link href={`${localePrefix}/profil#how`} className={menuItemClass} onClick={() => setMenuOpen(false)}>
+      <Link href={`${localePrefix}/profil#languageAndCurrency`} className={menuItemClass} onClick={() => setMenuOpen(false)}>
         <NavMenuIcon name="lifebuoy" />
         {t('howItWorks')}
       </Link>
@@ -201,20 +328,34 @@ export function Header() {
           {t('logout')}
         </button>
       ) : (
-        <Link href={`${localePrefix}/login`} className={menuItemClass} onClick={() => setMenuOpen(false)}>
+        <button
+          type="button"
+          className={menuItemClass}
+          onClick={() => {
+            setMenuOpen(false);
+            openLogin();
+          }}
+        >
           <NavMenuIcon name="login" />
           {t('account')}
-        </Link>
+        </button>
       )}
     </div>
   );
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-white" data-testid="app-header">
-      {/* Row 1: Logo, nav tabs, user actions */}
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+      {/* Row 1: Logo, nav tabs, user actions — hidden on mobile, only search bar shown */}
+      <div className="mx-auto hidden h-14 max-w-6xl items-center justify-between px-4 md:flex">
         <Link href={localePrefix} className="flex items-center gap-2 text-lg font-semibold text-black" aria-label="DrivePark" data-testid="header-logo">
-          <SparkIcon className="h-6 w-6 shrink-0 text-black" aria-hidden />
+          <Image 
+            src="https://drivepark.net/storage/2024/06/26/group-3-2-1719388913.png" 
+            alt="DrivePark" 
+            width={24} 
+            height={24} 
+            className="h-6 w-6 shrink-0" 
+            aria-hidden 
+          />
           <span>DrivePark</span>
         </Link>
 
@@ -238,15 +379,7 @@ export function Header() {
           <Link href={`${localePrefix}/host`} className="hidden text-sm font-medium text-neutral-700 hover:text-black md:inline-block">
             {role === 'HOST' ? t('partnerDashboard') : t('rentMyVehicles')}
           </Link>
-          <Link href={`${localePrefix}/messages`} className="hidden rounded-full p-2 text-neutral-700 hover:bg-neutral-100 md:block" aria-label={t('messages')}>
-            <NavMenuIcon name="chat" />
-          </Link>
-          <Link href={`${localePrefix}/bookings`} className="hidden rounded-full p-2 text-neutral-700 hover:bg-neutral-100 md:block" aria-label={t('myBookings')}>
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            </svg>
-          </Link>
-          <div className="relative">
+          <div className="relative hidden md:block">
             <button
               type="button"
               onClick={() => setMenuOpen((o) => !o)}
@@ -272,32 +405,102 @@ export function Header() {
       </div>
 
       {/* Row 2: Search — desktop inline bar, mobile trigger opens bottom sheet */}
-      <div className="border-t border-neutral-100 bg-white">
-        <div className="mx-auto flex max-w-6xl justify-center px-4 py-3">
-          {/* Mobile: trigger bar that opens bottom sheet */}
-          <button
-            type="button"
-            onClick={() => setSearchSheetOpen(true)}
-            className="flex w-full flex-1 items-center gap-2 overflow-hidden rounded-ds-pill border border-[var(--color-gray-light)] bg-[var(--color-white)] px-4 py-2.5 text-left shadow-ds-search md:hidden"
-            aria-label={tSearch('searchTriggerLabel')}
-          >
-            <svg className="h-4 w-4 shrink-0 text-ds-gray" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <span className="truncate text-sm text-ds-gray">{tSearch('searchTriggerLabel')}</span>
-          </button>
-          {/* Desktop: inline single-line search bar */}
-          <div className="hidden w-full max-w-3xl md:block">
-            <HeaderSearchBar />
+      {shouldShowSearchBar && (
+        <div className="border-t border-neutral-100 bg-white">
+          <div className="mx-auto flex max-w-6xl items-center justify-center gap-2 px-4 py-3">
+            {/* Mobile: trigger bar that opens bottom sheet */}
+            <button
+              type="button"
+              onClick={() => setSearchSheetOpen(true)}
+              className="flex w-full flex-1 items-center gap-2 overflow-hidden rounded-ds-pill border border-[var(--color-gray-light)] bg-[var(--color-white)] px-4 min-h-[55px] text-left shadow-[var(--shadow-search-mobile)] md:hidden"
+              aria-label={tSearch('searchTriggerLabel')}
+            >
+              <svg className="h-4 w-4 shrink-0 text-ds-gray" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              {mobileSearchButtonText}
+            </button>
+            {/* Desktop: inline single-line search bar + filters button */}
+            <div className="hidden w-full max-w-3xl md:flex md:items-center md:gap-2">
+              <div className="flex-1">
+                <HeaderSearchBar />
+              </div>
+              {shouldShowFiltersButton && (
+                <>
+                  <button
+                    ref={filtersButtonRef}
+                    type="button"
+                    onClick={() => setFiltersModalOpen(true)}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-ds-pill border border-[var(--color-gray-light)] bg-[var(--color-white)] text-neutral-700 hover:bg-neutral-50 transition-colors"
+                    aria-label="Filters"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                  </button>
+                  <FiltersModal
+                    open={filtersModalOpen}
+                    onClose={() => setFiltersModalOpen(false)}
+                    listingType={currentListingType}
+                    buttonRef={filtersButtonRef}
+                  />
+                  <FiltersSheet
+                    open={filtersSheetOpen}
+                    onClose={() => setFiltersSheetOpen(false)}
+                    listingType={currentListingType}
+                  />
+                </>
+              )}
+            </div>
+            {/* Mobile: filters button */}
+            {shouldShowFiltersButton && (
+              <button
+                type="button"
+                onClick={() => setFiltersSheetOpen(true)}
+                className="md:hidden flex h-9 w-9 shrink-0 items-center justify-center rounded-ds-pill border border-[var(--color-gray-light)] bg-[var(--color-white)] text-neutral-700 hover:bg-neutral-50 transition-colors"
+                aria-label={t('filters')}
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Catégories de véhicules — uniquement sur homepage et /location */}
+      {shouldShowCategories && <HeaderCategories />}
 
       <SearchBottomSheet open={searchSheetOpen} onClose={() => setSearchSheetOpen(false)}>
-        <HeaderSearchBar
-          variant="stacked"
-          onAfterSubmit={() => setSearchSheetOpen(false)}
-        />
+        <div className="flex flex-col h-full">
+          {/* Segmented control sticky top */}
+          <div className="sticky top-0 z-10 mb-4 flex rounded-lg border border-neutral-200 bg-white p-1" role="tablist" aria-label={tSearch('searchTriggerLabel')}>
+            {tabLinks.map(({ href, label }) => {
+              const type = href === '/location' ? 'location' : href === '/experience' ? 'experience' : 'ride';
+              const active = searchSheetListingType === type;
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setSearchSheetListingType(type)}
+                  className={`flex-1 rounded-md py-2 text-center text-sm font-medium transition-colors ${active ? 'bg-neutral-100 text-black' : 'text-neutral-600 hover:text-black'}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          {/* Mobile search flow */}
+          <div className="flex-1 min-h-0">
+            <MobileSearchFlow
+              listingType={searchSheetListingType}
+              onAfterSubmit={() => setSearchSheetOpen(false)}
+            />
+          </div>
+        </div>
       </SearchBottomSheet>
     </header>
   );

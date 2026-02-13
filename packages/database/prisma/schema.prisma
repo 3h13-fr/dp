@@ -1,4 +1,4 @@
-// Mobility platform — source of truth
+// DrivePark — source of truth
 // PostgreSQL + PostGIS for geo (extensions enabled in migration)
 
 generator client {
@@ -29,6 +29,7 @@ model User {
   avatarUrl     String?
   phone         String?
   preferredLang String    @default("en")
+  profileData   Json?     // preferredName, hostDisplayName, residentialAddress, postalAddress, emergencyContacts
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -43,6 +44,9 @@ model User {
   kycVerifications  KycVerification[]
   notifications     Notification[]
   auditLogs         AuditLog[]
+  hostPayouts       HostPayout[]
+  adminActions      AdminAction[]
+  stripeAccountId   String?  // ID du compte Stripe Connect de l'hôte
 }
 
 // ——— OTP (passwordless login / signup) ———
@@ -56,6 +60,19 @@ model OtpRequest {
 
   @@index([email])
   @@index([phone])
+  @@index([expiresAt])
+}
+
+// ——— Password reset (forgot password flow) ———
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
   @@index([expiresAt])
 }
 
@@ -258,30 +275,42 @@ model ModelAlias {
   @@index([normalizedAlias])
 }
 
+enum OwnerType {
+  PARTICULAR
+  PROFESSIONAL
+}
+
 model Vehicle {
-  id                String             @id @default(cuid())
-  vin               String             @unique
-  makeId            String
-  make              Make               @relation(fields: [makeId], references: [id], onDelete: Restrict)
-  modelId           String
-  model             Model              @relation(fields: [modelId], references: [id], onDelete: Restrict)
-  modelYear         Int
-  trimLabel         String?
-  fuelType          FuelType?
-  transmissionType  TransmissionType?
-  driveType         DriveType?
-  topSpeedKmh       Int?
-  zeroTo100S        Decimal?           @db.Decimal(5, 2)
-  powerKw           Decimal?           @db.Decimal(6, 2)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id                   String             @id @default(cuid())
+  vin                  String             @unique
+  makeId               String
+  make                 Make               @relation(fields: [makeId], references: [id], onDelete: Restrict)
+  modelId              String
+  model                Model              @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  modelYear            Int
+  trimLabel            String?
+  fuelType             FuelType?
+  transmissionType     TransmissionType?
+  driveType            DriveType?
+  topSpeedKmh          Int?
+  zeroTo100S           Decimal?           @db.Decimal(5, 2)
+  powerKw              Decimal?           @db.Decimal(6, 2)
+  powerCv              Int?               // Puissance en CV (thermique/hybride)
+  batteryKwh           Decimal?           @db.Decimal(5, 2) // Capacité batterie KWh (électrique)
+  registrationCountry  String?            // Pays d'immatriculation (ISO code)
+  licensePlate         String?            // Plaque d'immatriculation
+  fiscalPower          Int?               // Puissance fiscale
+  ownerType            OwnerType?         // Particulier ou professionnel
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
   @@index([vin])
   @@index([makeId])
   @@index([modelId])
-  specMeta   VehicleSpecMeta[]
-  fieldAudit VehicleFieldAudit[]
-  listings   Listing[]
+  specMeta      VehicleSpecMeta[]
+  fieldAudit    VehicleFieldAudit[]
+  listings      Listing[]
+  availability  VehicleAvailability[]
 }
 
 model VehicleSpecMeta {
@@ -321,6 +350,22 @@ enum ListingType {
   CHAUFFEUR
 }
 
+model Category {
+  id        String      @id @default(cuid())
+  name      String      // Nom de la catégorie
+  slug      String      // Slug unique pour l'URL
+  vertical  ListingType // CAR_RENTAL | MOTORIZED_EXPERIENCE | CHAUFFEUR
+  imageUrl  String?     // URL de l'image de la catégorie
+  order     Int         @default(0) // Ordre d'affichage
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  
+  listings  ListingCategory[]   // Relation many-to-many avec les listings
+  
+  @@unique([vertical, slug])
+  @@index([vertical])
+}
+
 model Listing {
   id          String      @id @default(cuid())
   type        ListingType
@@ -334,6 +379,9 @@ model Listing {
 
   vehicleId   String?
   vehicle     Vehicle?    @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  // Categories: many-to-many relation
+  categories  ListingCategory[]
 
   // Geo (PostGIS: use raw SQL or Prisma extension for point)
   cityId      String?
@@ -350,14 +398,26 @@ model Listing {
   caution     Decimal?    @db.Decimal(10, 2)
   cancellationPolicy String?
 
+  // Booking rules
+  minBookingNoticeHours Int?      // Délai minimum de préavis (heures)
+  maxBookingAdvanceDays Int?      // Délai maximum de réservation à l'avance (jours)
+  instantBooking Boolean @default(false) // Réservation instantanée
+  manualApprovalRequired Boolean @default(false) // Validation manuelle obligatoire
+  minRentalDurationHours Int?     // Durée minimale de location (heures)
+  maxRentalDurationDays Int?      // Durée maximale de location (jours)
+  autoAcceptBookings Boolean @default(false) // Acceptation automatique
+
+  // Renter conditions
+  minDriverAge Int?       // Âge minimum du conducteur
+  minLicenseYears Int?    // Nombre minimum d'années de permis
+
   // Car-specific / Listing config (seats, doors, luggage when vehicleId present)
-  category    String?     // economy, sedan, suv...
   transmission String?    // legacy; prefer vehicle.transmissionType
   fuelType    String?     // legacy; prefer vehicle.fuelType
   seats       Int?
   doors       Int?
   luggage     Int?
-  options     Json?       // extra options, insurance options
+  options     Json?       // extra options: availability, pricing, usageConditions, insurance, returnRules, penalties
 
   // Experience / Chauffeur
   durationMinutes Int?
@@ -367,10 +427,116 @@ model Listing {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  photos      ListingPhoto[]
-  availabilities ListingAvailability[]
-  bookings    Booking[]
-  reviews     Review[]
+  photos           ListingPhoto[]
+  availabilities   ListingAvailability[]
+  bookings        Booking[]
+  reviews         Review[]
+  insurancePolicies ListingInsurancePolicy[]
+}
+
+// ——— Listing-Category (many-to-many) ———
+model ListingCategory {
+  id         String   @id @default(cuid())
+  listingId  String
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([listingId, categoryId])
+  @@index([listingId])
+  @@index([categoryId])
+}
+
+// ——— Assurances ———
+model Insurer {
+  id       String   @id @default(cuid())
+  name     String
+  status   String   @default("ACTIVE") // ACTIVE | INACTIVE
+  policies InsurancePolicy[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+model InsurancePolicy {
+  id                 String   @id @default(cuid())
+  insurerId          String
+  insurer            Insurer  @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  name               String
+  eligibilityCriteria Json    // vehicleYearMin/Max, minDriverAge, minLicenseYears, fiscalPowerMin/Max, allowedCountries[], registrationCountries[], ownerTypes[], secondaryDriverAllowed
+  details            Json     // cautionAmount, assistance0km, roadsideAssistance, personalEffectsProtection, compensationCeiling, minRentalDays, maxRentalDays
+  status             String   @default("ACTIVE") // ACTIVE | INACTIVE
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  listings ListingInsurancePolicy[]
+  markets  MarketInsurancePolicy[]
+
+  @@index([insurerId])
+  @@index([status])
+}
+
+enum MarketStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+}
+
+model Market {
+  id                  String       @id @default(cuid())
+  countryCode         String       @unique
+  displayName         String
+  status              MarketStatus @default(DRAFT)
+  visibleToClient     Boolean      @default(false)
+  bookingsAllowed     Boolean      @default(false)
+  defaultCurrency     String?
+  defaultLanguage     String?
+  allowedLanguages    Json         // ["fr", "en"]
+  allowedCurrencies   Json         // ["EUR"]
+  paymentProvider     String?
+  paymentMethods      Json?
+  commissionPercent   Decimal?     @db.Decimal(5, 2)
+  taxesEnabled        Boolean      @default(false)
+  vatIncluded         Boolean      @default(true)
+  defaultVatRate      Decimal?     @db.Decimal(5, 2)
+  invoiceLegalMention String?      @db.Text
+  seoIndexable        Boolean      @default(true)
+  internalNote        String?      @db.Text
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  policyLinks         MarketInsurancePolicy[]
+
+  @@index([status])
+  @@index([countryCode])
+}
+
+model MarketInsurancePolicy {
+  id               String          @id @default(cuid())
+  marketId         String
+  market           Market          @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  insurancePolicyId String
+  insurancePolicy  InsurancePolicy  @relation(fields: [insurancePolicyId], references: [id], onDelete: Cascade)
+  isDefault        Boolean         @default(false)
+  createdAt        DateTime        @default(now())
+
+  @@unique([marketId, insurancePolicyId])
+  @@index([marketId])
+  @@index([insurancePolicyId])
+}
+
+model ListingInsurancePolicy {
+  id               String   @id @default(cuid())
+  listingId        String
+  listing          Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  insurancePolicyId String
+  insurancePolicy  InsurancePolicy @relation(fields: [insurancePolicyId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+
+  @@unique([listingId, insurancePolicyId])
+  @@index([listingId])
+  @@index([insurancePolicyId])
 }
 
 model ListingPhoto {
@@ -380,6 +546,21 @@ model ListingPhoto {
   url       String
   order     Int      @default(0)
   createdAt DateTime @default(now())
+}
+
+// Availability at vehicle level: one calendar per vehicle; shared by all listings that use this vehicle (e.g. location + chauffeur).
+model VehicleAvailability {
+  id            String    @id @default(cuid())
+  vehicleId     String
+  vehicle       Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  date          DateTime  @db.Date
+  available     Boolean   @default(true)
+  priceOverride Decimal?  @db.Decimal(10, 2)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([vehicleId, date])
+  @@index([vehicleId, date])
 }
 
 model ListingAvailability {
@@ -396,9 +577,70 @@ model ListingAvailability {
   @@index([listingId, date])
 }
 
+// ——— Inspections & Damage Claims ———
+enum InspectionType {
+  DEPART
+  RETOUR
+}
+
+enum InspectionMode {
+  MAIN_PROPRE
+  BOITE_A_CLES
+}
+
+enum InspectionCreator {
+  HOST
+  RENTER
+}
+
+enum InspectionStatus {
+  DRAFT
+  SUBMITTED
+  VALIDATED
+  CONTESTED
+  EXPIRED
+}
+
+enum ConditionStatus {
+  OK
+  MINOR_ISSUE
+  MAJOR_ISSUE
+}
+
+enum CleanlinessLevel {
+  CLEAN
+  LIGHT_DIRT
+  DIRTY
+  VERY_DIRTY
+}
+
+enum DamageClaimStatus {
+  DRAFT
+  SUBMITTED
+  AWAITING_RENTER_RESPONSE
+  RENTER_ACCEPTED
+  RENTER_CONTESTED
+  AWAITING_ADMIN_REVIEW
+  ADMIN_APPROVED
+  ADMIN_ADJUSTED
+  ADMIN_REJECTED
+  CLOSED
+}
+
+enum DepositStatus {
+  PREAUTHORIZED
+  HELD
+  UNDER_REVIEW
+  RELEASED
+  CAPTURE_REQUESTED
+  CAPTURED_PARTIAL
+  CAPTURED_FULL
+}
+
 // ——— Bookings ———
 enum BookingStatus {
   PENDING
+  PENDING_APPROVAL  // Pré-autorisation effectuée, en attente d'approbation host (manuel)
   CONFIRMED
   CANCELLED
   COMPLETED
@@ -426,12 +668,21 @@ model Booking {
   checkOutAt    DateTime?
   notes         String?
 
+  approvalDeadline DateTime?  // Date limite d'approbation pour réservations manuelles
+  approvalExpired  Boolean    @default(false) // Flag pour éviter double traitement
+  handoverMode     InspectionMode? // MAIN_PROPRE | BOITE_A_CLES — défini au checkout
+
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  payments      Payment[]
-  messages      Message[]
-  review        Review?
+  payments           Payment[]
+  messages           Message[]
+  review             Review?
+  hostPayout         HostPayout?
+  inspections        Inspection[]
+  damageClaims       DamageClaim[]
+  deposit            Deposit?
+  inspectionTimeline InspectionTimelineEvent[]
 }
 
 // ——— Payments (Stripe-oriented) ———
@@ -455,25 +706,44 @@ model Payment {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
+  auditLogs     PaymentAuditLog[]
+  deposit       Deposit?
+
   @@index([bookingId])
   @@index([stripePaymentId])
+  @@index([bookingId, type, status])
+  // Note: Contrainte unique partielle (bookingId, type, status) pour status=PENDING
+  // sera créée via migration SQL car Prisma ne supporte pas les contraintes uniques partielles directement
 }
 
 // ——— Messaging ———
 model Message {
-  id        String   @id @default(cuid())
-  bookingId String?
-  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  senderId  String
-  sender    User     @relation("SenderMessages", fields: [senderId], references: [id])
+  id         String   @id @default(cuid())
+  bookingId  String?
+  booking    Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  senderId   String
+  sender     User     @relation("SenderMessages", fields: [senderId], references: [id])
   receiverId String
-  receiver  User     @relation("ReceiverMessages", fields: [receiverId], references: [id])
-  body      String
-  readAt    DateTime?
-  createdAt DateTime @default(now())
+  receiver   User     @relation("ReceiverMessages", fields: [receiverId], references: [id])
+  body       String
+  readAt     DateTime?
+  createdAt  DateTime @default(now())
+  attachments MessageAttachment[]
 
   @@index([bookingId])
   @@index([senderId, receiverId])
+}
+
+model MessageAttachment {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  url       String
+  type      String   // "image" | "file"
+  filename  String?
+  createdAt DateTime @default(now())
+
+  @@index([messageId])
 }
 
 // ——— Reviews ———
@@ -538,4 +808,203 @@ model Setting {
   updatedAt DateTime @updatedAt
 
   @@index([category])
+}
+
+// ——— Host Payouts ———
+enum PayoutStatus {
+  PENDING       // En attente (réservation pas encore terminée)
+  SCHEDULED     // Programmé pour versement (après endAt)
+  PROCESSING    // Transfert Stripe en cours
+  PAID          // Versé à l'hôte
+  FAILED        // Échec du transfert
+  CANCELLED     // Annulé (si réservation annulée avant versement)
+}
+
+model HostPayout {
+  id              String        @id @default(cuid())
+  bookingId       String        @unique
+  booking         Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  hostId          String
+  host            User          @relation(fields: [hostId], references: [id])
+  
+  totalAmount     Decimal       @db.Decimal(10, 2)  // Montant total réservation
+  commissionAmount Decimal      @db.Decimal(10, 2)  // 15% commission plateforme
+  hostAmount      Decimal       @db.Decimal(10, 2)  // 85% versé à l'hôte
+  
+  currency        String        @default("EUR")
+  status          PayoutStatus  @default(PENDING)
+  stripeTransferId String?      @unique  // ID du transfer Stripe
+  
+  scheduledAt     DateTime?     // Date prévue (après endAt)
+  paidAt          DateTime?     // Date effective
+  metadata        Json?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([hostId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+// ——— Payment Audit Log ———
+model PaymentAuditLog {
+  id          String   @id @default(cuid())
+  paymentId   String
+  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  action      String   // refund, retry, cancel, override_amount, status_change
+  actorId     String
+  actorType   String   // admin, system, webhook
+  oldValue    Json?    // État avant modification
+  newValue    Json?    // État après modification
+  reason      String?  // Raison de la modification
+  metadata    Json?    // Données supplémentaires (stripeResponse, etc.)
+  createdAt   DateTime @default(now())
+  
+  @@index([paymentId])
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ——— Payment Settings ———
+model PaymentSettings {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json     // Valeur configurable
+  description String?  // Description de la config
+  updatedBy   String?  // Admin qui a modifié
+  updatedAt   DateTime @updatedAt
+}
+
+// ——— Admin Actions ———
+model AdminAction {
+  id          String   @id @default(cuid())
+  adminId     String
+  admin       User     @relation(fields: [adminId], references: [id])
+  action      String   // refund_payment, force_payout, override_commission, etc.
+  resource    String   // Payment, HostPayout, Booking
+  resourceId String
+  details     Json     // Détails de l'action
+  result      String?  // success, failed, pending
+  error       String?  // Message d'erreur si échec
+  createdAt   DateTime @default(now())
+  
+  @@index([adminId])
+  @@index([resource, resourceId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ——— Inspections (état des lieux) ———
+model Inspection {
+  id                  String           @id @default(cuid())
+  bookingId           String
+  booking             Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  type                InspectionType
+  mode                InspectionMode
+  createdBy           InspectionCreator
+  delegated           Boolean          @default(false)
+  status              InspectionStatus @default(DRAFT)
+  mileageValue        Int?
+  energyLevelPercent  Int?
+  documentsPresent    Json?
+  accessoriesChecklist Json?
+  dashboardWarnings   Json?
+  metadata            Json?
+  contentHash         String?
+  validatedAt         DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  items InspectionItem[]
+
+  @@index([bookingId])
+  @@index([bookingId, type])
+}
+
+model InspectionItem {
+  id               String           @id @default(cuid())
+  inspectionId     String
+  inspection       Inspection       @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  itemCode         String
+  photoStepCode    String
+  photoUrl         String?
+  conditionStatus  ConditionStatus
+  conditionNote    String?
+  cleanlinessLevel CleanlinessLevel
+  cleanlinessNote  String?
+  detailCloseups   Json?
+  order            Int
+
+  @@unique([inspectionId, itemCode])
+  @@index([inspectionId])
+}
+
+model DamageClaim {
+  id               String            @id @default(cuid())
+  bookingId        String
+  booking          Booking           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  createdBy        String
+  status           DamageClaimStatus  @default(DRAFT)
+  category         String
+  zoneCoords       Json?
+  amountRequested  Decimal           @db.Decimal(10, 2)
+  justification   String            @db.Text
+  quoteUrl        String?
+  departPhotoUrl   String
+  returnPhotoUrl  String
+  submittedAt      DateTime?
+  renterResponse   String?
+  renterResponseAt DateTime?
+  adminDecision   String?
+  adminAmount     Decimal?          @db.Decimal(10, 2)
+  adminNote       String?           @db.Text
+  adminDecidedAt  DateTime?
+  adminId         String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([bookingId])
+}
+
+model Deposit {
+  id        String       @id @default(cuid())
+  bookingId String       @unique
+  booking   Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  paymentId String       @unique
+  payment   Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  status    DepositStatus @default(PREAUTHORIZED)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([bookingId])
+}
+
+model InspectionTimelineEvent {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  eventType String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([bookingId])
+  @@index([bookingId, eventType])
+}
+
+model InspectionScoring {
+  id                     String    @id @default(cuid())
+  bookingId              String?
+  inspectionId           String?
+  damageClaimId          String?
+  inspectionQualityScore Int?
+  hostReliabilityScore   Int?
+  renterReliabilityScore Int?
+  claimConfidenceScore   Int?
+  computedAt             DateTime  @default(now())
+
+  @@index([bookingId])
+  @@index([inspectionId])
+  @@index([damageClaimId])
 }

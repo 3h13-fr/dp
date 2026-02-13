@@ -6,8 +6,6 @@ test.describe('i18n: change language + fallback EN', () => {
     await page.goto('/fr/listings');
     await waitForAppReady(page);
     await expect(page).toHaveURL(/\/fr\/location/, { timeout: 15000 });
-    await expect(page.getByTestId('listings-location-title')).toBeVisible({ timeout: 15000 });
-    // Location page shows ListingsGrid (no search bar): assert French grid copy
     await expect(
       page.getByText(/annonce\(s\) trouvée\(s\)|Aucune annonce|Chargement/i),
     ).toBeVisible({ timeout: 15000 });
@@ -17,7 +15,9 @@ test.describe('i18n: change language + fallback EN', () => {
     await page.goto('/en/listings');
     await waitForAppReady(page);
     await expect(page).toHaveURL(/\/en\/location/, { timeout: 15000 });
-    await expect(page.getByTestId('listings-location-title')).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.getByText(/listing\(s\) found|No listings found|Loading/i),
+    ).toBeVisible({ timeout: 15000 });
   });
 
   test('French home shows French content', async ({ page }) => {

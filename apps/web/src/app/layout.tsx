@@ -10,7 +10,7 @@ const titillium = Titillium_Web({
 });
 
 export const metadata: Metadata = {
-  title: 'Mobility Platform',
+  title: 'DrivePark',
   description: 'Rent cars, book experiences, or hire a driver.',
 };
 

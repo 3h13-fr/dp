@@ -85,3 +85,15 @@ Codes acceptés par type :
 
 - **Nouvelle page Next** : ajouter l’URL dans `scripts/verify-urls.mjs` (section `frontendRoutes`).
 - **Nouvel endpoint API** : ajouter méthode + path dans `scripts/verify-urls.mjs` (section `apiRoutes`).
+
+## Workflow états des lieux (complet)
+
+Pour une vérification complète incluant les tests E2E, utiliser :
+
+```bash
+pnpm verify:state
+```
+
+Cette commande enchaîne : `verify:urls` → `verify:listings` → `test:e2e:no-server`.
+
+Voir [WORKFLOW_ETATS_DES_LIEUX.md](./WORKFLOW_ETATS_DES_LIEUX.md) pour les prérequis et le détail.

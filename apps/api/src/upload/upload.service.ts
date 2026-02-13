@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-export type UploadPurpose = 'listing_photo' | 'kyc_id' | 'kyc_license' | 'incident';
+export type UploadPurpose = 'listing_photo' | 'kyc_id' | 'kyc_license' | 'incident' | 'message_attachment' | 'category_image' | 'inspection_photo';
 
 @Injectable()
 export class UploadService {
@@ -35,7 +35,18 @@ export class UploadService {
   /** Generate a safe key for the given purpose and user/entity */
   buildKey(purpose: UploadPurpose, userId: string, suffix: string): string {
     const sanitized = suffix.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 64);
-    const prefix = purpose === 'listing_photo' ? 'listings' : purpose === 'incident' ? 'incidents' : 'kyc';
+    const prefix =
+      purpose === 'listing_photo'
+        ? 'listings'
+        : purpose === 'incident'
+          ? 'incidents'
+          : purpose === 'message_attachment'
+            ? 'messages'
+            : purpose === 'category_image'
+              ? 'categories'
+              : purpose === 'inspection_photo'
+                ? 'inspections'
+                : 'kyc';
     return `${prefix}/${userId}/${Date.now()}-${sanitized}`;
   }
 
@@ -59,5 +70,60 @@ export class UploadService {
   /** Return public URL for a stored key (if bucket is public) or presigned get for private */
   getPublicUrl(key: string): string {
     return `${this.publicBaseUrl}/${key}`;
+  }
+
+  /** Extract S3 key from a public URL */
+  extractKeyFromUrl(url: string): string | null {
+    try {
+      // Try to extract key from publicBaseUrl format
+      if (url.startsWith(this.publicBaseUrl)) {
+        return url.replace(this.publicBaseUrl, '').replace(/^\//, '');
+      }
+      // Try to extract from standard S3 URL format: https://bucket.s3.region.amazonaws.com/key
+      const s3UrlPattern = new RegExp(`https://${this.bucket}\\.s3[.-]${this.region.replace(/-/g, '\\-')}\\.amazonaws\\.com/(.+)$`);
+      const match = url.match(s3UrlPattern);
+      if (match && match[1]) {
+        return decodeURIComponent(match[1]);
+      }
+      // Try to extract from custom endpoint format: https://endpoint/bucket/key
+      if (this.config.get<string>('AWS_S3_ENDPOINT')) {
+        const endpointPattern = new RegExp(`https://[^/]+/${this.bucket}/(.+)$`);
+        const endpointMatch = url.match(endpointPattern);
+        if (endpointMatch && endpointMatch[1]) {
+          return decodeURIComponent(endpointMatch[1]);
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Get presigned URL for GET (reading) an object from S3 */
+  async getPresignedReadUrl(
+    keyOrUrl: string,
+    expiresInSeconds = 3600,
+  ): Promise<string | null> {
+    if (!this.s3) return null;
+    
+    // If it's already a key, use it directly; otherwise extract from URL
+    const key = keyOrUrl.includes('/') && keyOrUrl.startsWith('http') 
+      ? this.extractKeyFromUrl(keyOrUrl)
+      : keyOrUrl;
+    
+    if (!key) return null;
+
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+    });
+    
+    try {
+      const signedUrl = await getSignedUrl(this.s3, command, { expiresIn: expiresInSeconds });
+      return signedUrl;
+    } catch (error) {
+      console.error('Error generating presigned read URL:', error);
+      return null;
+    }
   }
 }

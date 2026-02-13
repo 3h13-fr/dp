@@ -12,6 +12,7 @@ class CreatePaymentIntentDto {
   type: 'booking' | 'extra';
   amount: number;
   currency: string;
+  idempotencyKey?: string;
 }
 
 @Controller('payments')
@@ -32,6 +33,7 @@ export class PaymentsController {
   async createPaymentIntent(
     @CurrentUser() user: User,
     @Body() dto: CreatePaymentIntentDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     return this.payments.createPaymentIntent(
       dto.bookingId,
@@ -39,6 +41,7 @@ export class PaymentsController {
       dto.amount,
       dto.currency,
       user.id,
+      idempotencyKey || dto.idempotencyKey,
     );
   }
 
@@ -51,23 +54,7 @@ export class PaymentsController {
     return this.payments.createCautionHold(body.bookingId, user.id);
   }
 
-  @UseGuards(AuthGuard('jwt'))
-  @Post('capture-caution')
-  async captureCaution(
-    @CurrentUser() user: User,
-    @Body() body: { bookingId: string; paymentId: string },
-  ) {
-    return this.payments.captureCaution(body.bookingId, body.paymentId, user.id);
-  }
-
-  @UseGuards(AuthGuard('jwt'))
-  @Post('release-caution')
-  async releaseCaution(
-    @CurrentUser() user: User,
-    @Body() body: { bookingId: string; paymentId: string },
-  ) {
-    return this.payments.releaseCaution(body.bookingId, body.paymentId, user.id);
-  }
+  // Note: capture-caution and release-caution removed from host/guest — admin only via /admin/deposits
 
   @Post('webhook')
   async webhook(

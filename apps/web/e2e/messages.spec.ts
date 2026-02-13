@@ -15,9 +15,8 @@ test.describe('Messaging: open conversation + send message', () => {
 
   test('after creating a booking, client can open messages and send a message', async ({ page }) => {
     await waitForAppReady(page);
-    await page.getByPlaceholder(/City|address|adresse|ville/i).first().fill('Paris', { timeout: 10000 });
-    await page.getByRole('button', { name: /Search|Rechercher/i }).first().click();
-    await expect(page).toHaveURL(new RegExp(`/${LOCALE}/(listings|location)`), { timeout: 15000 });
+    await page.goto(`/${LOCALE}/location?city=Paris`);
+    await expect(page).toHaveURL(new RegExp(`/${LOCALE}/location`), { timeout: 15000 });
     // Wait for grid to load; skip if no listings
     await expect(
       page
@@ -35,9 +34,11 @@ test.describe('Messaging: open conversation + send message', () => {
     await expect(page).toHaveURL(new RegExp(`/${LOCALE}/(location|experience|ride)/[^/]+$`));
     await page.getByTestId('listing-book-link').click();
     await expect(page).toHaveURL(new RegExp(`/${LOCALE}/(location|experience|ride)/[^/]+/checkout`));
+
+    await waitForAppReady(page);
+    await expect(page.getByTestId('checkout-summary').first()).toBeVisible({ timeout: 15000 });
     const dateInputs = page.locator('input[type="datetime-local"]');
     await expect(dateInputs.first()).toBeVisible({ timeout: 15000 });
-    await dateInputs.first().waitFor({ state: 'attached' });
 
     const start = new Date();
     start.setDate(start.getDate() + 6);
@@ -46,7 +47,16 @@ test.describe('Messaging: open conversation + send message', () => {
     const format = (d: Date) => d.toISOString().slice(0, 16);
     await dateInputs.first().fill(format(start));
     await dateInputs.nth(1).fill(format(end));
-    await page.getByRole('button', { name: /Continue to payment|Confirm and pay|Confirmer et payer|Creating/i }).click();
+    await page.waitForTimeout(1000);
+    await waitForAppReady(page);
+    const continueBtn = page
+      .getByRole('button', {
+        name: /Continue to payment|Confirm and pay|Confirmer et payer|Creating|Next|Suivant/i,
+      })
+      .first();
+    await expect(continueBtn).toBeVisible({ timeout: 15000 });
+    await expect(continueBtn).toBeEnabled({ timeout: 5000 });
+    await continueBtn.click();
 
     const payUrlRegex = new RegExp(`/${LOCALE}/bookings/([^/]+)/pay`);
     try {
@@ -66,10 +76,10 @@ test.describe('Messaging: open conversation + send message', () => {
     await waitForAppReady(page);
     await expect(page.getByRole('heading', { name: /Messages/i })).toBeVisible({ timeout: 5000 });
     // Conversation shows listing title or "with" + name
-    await expect(page.getByText(/Citadine|Marie|Dupont|avec|with/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/Renault Clio|Clio|Marie|Dupont|avec|with/i)).toBeVisible({ timeout: 5000 });
 
     await page.getByPlaceholder(/Type a message|Écrivez un message/i).fill('Hello, I have a question about pickup.');
-    await page.getByRole('button', { name: /Send|Envoyer/i }).click();
+    await page.getByTestId('message-send-button').click();
 
     await expect(page.getByText('Hello, I have a question about pickup.')).toBeVisible({ timeout: 5000 });
   });

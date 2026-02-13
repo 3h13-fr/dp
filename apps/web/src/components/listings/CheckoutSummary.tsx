@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { getListingTitle } from '@/lib/listings';
+import { S3Image } from '@/components/S3Image';
+import { calculateListingPrice, type ListingForPricing } from '@/lib/pricing';
 
 type Listing = {
   id: string;
@@ -16,6 +18,7 @@ type Listing = {
   cancellationPolicy?: string | null;
   photos?: Array<{ url: string; order?: number }>;
   host?: { id: string; firstName?: string | null; lastName?: string | null };
+  options?: { pricing?: { hourlyAllowed?: boolean; pricePerHour?: number | null; durationDiscount3Days?: number | null; durationDiscount7Days?: number | null; durationDiscount30Days?: number | null } } | null;
 };
 
 type CheckoutSummaryProps = {
@@ -51,18 +54,20 @@ export function CheckoutSummary({
   const currency = listing.currency ?? 'EUR';
   const formatPrice = (n: number) => `${n.toFixed(2)} ${currency}`;
 
-  const { days, subtotal } = (() => {
-    if (!startAt || !endAt) return { days: 0, subtotal: 0 };
-    const start = new Date(startAt).getTime();
-    const end = new Date(endAt).getTime();
-    if (end <= start) return { days: 0, subtotal: 0 };
-    const days = Math.max(
-      1,
-      Math.ceil((end - start) / (24 * 60 * 60 * 1000))
-    );
-    const subtotal = pricePerDay * days;
-    return { days, subtotal };
+  const priceCalculation = (() => {
+    if (!startAt || !endAt) return null;
+    
+    const listingForPricing: ListingForPricing = {
+      pricePerDay: listing.pricePerDay,
+      currency: listing.currency,
+      options: listing.options,
+    };
+    
+    return calculateListingPrice(startAt, endAt, listingForPricing);
   })();
+
+  const days = priceCalculation?.days ?? 0;
+  const subtotal = priceCalculation?.finalPrice ?? 0;
 
   const photos = listing.photos?.length
     ? [...listing.photos].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
@@ -96,7 +101,7 @@ export function CheckoutSummary({
             href={`/${locale}/${vertical}/${slug}`}
             className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-[var(--color-gray-bg)]"
           >
-            <img
+            <S3Image
               src={firstPhoto.url}
               alt=""
               className="h-full w-full object-cover"
@@ -160,12 +165,32 @@ export function CheckoutSummary({
         <p className="text-sm font-medium text-[var(--color-black)]">
           {t('priceDetails')}
         </p>
-        {days > 0 && pricePerDay > 0 ? (
+        {days > 0 && priceCalculation ? (
           <>
-            <p className="mt-2 text-sm text-[var(--color-gray-dark)]">
-              {t('nights', { count: days })} × {formatPrice(pricePerDay)} ={' '}
-              {formatPrice(subtotal)}
-            </p>
+            {priceCalculation.discount > 0 ? (
+              <>
+                <p className="mt-2 text-sm text-[var(--color-gray-dark)]">
+                  {priceCalculation.isHourly 
+                    ? `${formatPrice(priceCalculation.basePrice / priceCalculation.hours)} × ${priceCalculation.hours} ${t('hours') || 'h'}`
+                    : `${formatPrice(priceCalculation.basePrice / priceCalculation.days)} × ${t('nights', { count: priceCalculation.days })}`}
+                  {' = '}
+                  {formatPrice(priceCalculation.basePrice)}
+                </p>
+                <p className="mt-1 text-sm text-[var(--color-primary)]">
+                  {t('discountApplied', { percent: priceCalculation.discount }) || `Remise ${priceCalculation.discount}%`}
+                  {' -'}
+                  {formatPrice(priceCalculation.basePrice - priceCalculation.finalPrice)}
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-[var(--color-gray-dark)]">
+                {priceCalculation.isHourly 
+                  ? `${formatPrice(priceCalculation.basePrice / priceCalculation.hours)} × ${priceCalculation.hours} ${t('hours') || 'h'}`
+                  : `${formatPrice(priceCalculation.basePrice / priceCalculation.days)} × ${t('nights', { count: priceCalculation.days })}`}
+                {' = '}
+                {formatPrice(subtotal)}
+              </p>
+            )}
             <p className="mt-2 text-base font-semibold text-[var(--color-black)]">
               {t('total')} {currency}: {formatPrice(subtotal)}
             </p>

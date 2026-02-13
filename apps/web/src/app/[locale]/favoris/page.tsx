@@ -1,11 +1,17 @@
-import { getTranslations, getLocale } from 'next-intl/server';
-import Link from 'next/link';
+'use client';
 
-export default async function FavorisPage() {
-  const t = await getTranslations('nav');
-  const tListings = await getTranslations('listings');
-  const locale = await getLocale();
+import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
+
+export default function FavorisPage() {
+  const { ready } = useRequireAuth();
+  const locale = useLocale();
+  const t = useTranslations('nav');
+  const tListings = useTranslations('listings');
   const prefix = `/${locale}`;
+
+  if (!ready) return null;
 
   return (
     <div className="mx-auto max-w-lg px-4 py-8 pb-24 md:pb-8">

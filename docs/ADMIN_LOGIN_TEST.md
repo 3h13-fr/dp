@@ -5,7 +5,7 @@
 ### 1. API : login admin (curl)
 
 - **Requête :** `POST http://localhost:4000/auth/login`  
-  Body : `{"email":"mohamedsakho@drivepark.net","password":"demo"}`
+  Body : `{"email":"mohamedsakho@drivepark.net","password":"demodemo"}`
 - **Réponse :** HTTP **201**
 - **Body :** `{"access_token":"...","expires_in":"7d","role":"ADMIN"}`
 - **Conclusion :** Le login côté API fonctionne (bcrypt, JWT, rôle ADMIN).
@@ -41,7 +41,7 @@ Points à surveiller en cas de problème :
 2. Démarrer le front :  
    `cd /Applications/DP/apps/web && pnpm dev`
 3. Ouvrir `http://localhost:3000/en/login`.
-4. Saisir **mohamedsakho@drivepark.net** / **demo** → Sign in.
+4. Saisir **mohamedsakho@drivepark.net** / **demodemo** → Sign in.
 5. Vérifier la redirection vers `/en/admin` puis `/en/admin/users`, sidebar « Admin » visible.
 6. Ouvrir les DevTools (F12) → onglet **Network** :  
    - `POST .../auth/login` → 201, body avec `access_token` et `role`.  
@@ -51,7 +51,7 @@ Points à surveiller en cas de problème :
 ### 5. Compte de test (seed)
 
 - **Email :** `mohamedsakho@drivepark.net`
-- **Mot de passe :** `demo`
+- **Mot de passe :** `demodemo`
 - **Rôle :** ADMIN  
 
 (Idem pour `host@example.com` et `client@example.com` avec le même mot de passe.)
@@ -69,4 +69,4 @@ pnpm exec playwright install   # une fois, pour installer les navigateurs
 pnpm test:e2e e2e/routes.spec.ts
 ```
 
-Le test remplit le formulaire de login avec `mohamedsakho@drivepark.net` / `demo`, vérifie la redirection vers `/admin`, affiche les erreurs console et les requêtes auth en échec s’il y en a.
+Le test remplit le formulaire de login avec `mohamedsakho@drivepark.net` / `demodemo`, vérifie la redirection vers `/admin`, affiche les erreurs console et les requêtes auth en échec s’il y en a.

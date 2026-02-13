@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Patch, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { IsArray, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { AuthGuard } from '@nestjs/passport';
@@ -38,11 +38,13 @@ export class AdminController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
     @Query('status') status?: string,
+    @Query('type') type?: string,
   ): Promise<{ items: unknown[]; total: number }> {
     return this.admin.getListingsForModeration(
       limit ? parseInt(limit, 10) : undefined,
       offset ? parseInt(offset, 10) : undefined,
       status,
+      type,
     );
   }
 
@@ -55,11 +57,86 @@ export class AdminController {
   updateListingStatus(
     @CurrentUser() user: User,
     @Param('id') id: string,
-    @Body() body: { status: string },
+    @Body() body: { status: string; reason?: string },
     @Req() req: Request,
   ): Promise<unknown> {
     const ip = req.ip ?? req.socket?.remoteAddress ?? undefined;
-    return this.admin.updateListingStatus(id, body.status, user.id, ip);
+    return this.admin.updateListingStatus(id, body.status, user.id, ip, body.reason);
+  }
+
+  @Patch('listings/:id')
+  updateListing(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      description?: string | null;
+      pricePerDay?: number | null;
+      currency?: string;
+      caution?: number | null;
+      status?: string;
+      options?: Record<string, unknown> | null;
+      // Location fields
+      address?: string | null;
+      city?: string | null;
+      country?: string | null;
+      latitude?: number | null;
+      longitude?: number | null;
+      // Booking rules
+      minBookingNoticeHours?: number | null;
+      maxBookingAdvanceDays?: number | null;
+      instantBooking?: boolean;
+      manualApprovalRequired?: boolean;
+      minRentalDurationHours?: number | null;
+      maxRentalDurationDays?: number | null;
+      autoAcceptBookings?: boolean;
+      // Renter conditions
+      minDriverAge?: number | null;
+      minLicenseYears?: number | null;
+      // Categories (array of category IDs)
+      categoryIds?: string[] | null;
+    },
+  ): Promise<unknown> {
+    return this.admin.updateListing(id, body);
+  }
+
+  @Patch('listings/:id/vehicle')
+  updateListingVehicle(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      powerCv?: number | null;
+      batteryKwh?: number | null;
+      topSpeedKmh?: number | null;
+      zeroTo100S?: number | null;
+      powerKw?: number | null;
+      registrationCountry?: string | null;
+      licensePlate?: string | null;
+      fiscalPower?: number | null;
+      ownerType?: 'PARTICULAR' | 'PROFESSIONAL' | null;
+    },
+  ): Promise<unknown> {
+    return this.admin.updateListingVehicle(id, body);
+  }
+
+  @Post('listings/:id/photos')
+  addPhoto(
+    @Param('id') id: string,
+    @Body() body: { url: string; order?: number },
+  ): Promise<unknown> {
+    return this.admin.addPhoto(id, body.url, body.order);
+  }
+
+  @Delete('listings/:id/photos/:photoId')
+  removePhoto(@Param('id') id: string, @Param('photoId') photoId: string): Promise<void> {
+    return this.admin.removePhoto(id, photoId);
+  }
+
+  @Patch('listings/:id/photos/reorder')
+  reorderPhotos(
+    @Param('id') id: string,
+    @Body() body: { photoIds: string[] },
+  ): Promise<void> {
+    return this.admin.reorderPhotos(id, body.photoIds);
   }
 
   @Get('bookings')
@@ -73,6 +150,11 @@ export class AdminController {
       offset ? parseInt(offset, 10) : undefined,
       status,
     );
+  }
+
+  @Get('bookings/:id')
+  getBookingDetail(@Param('id') id: string): Promise<unknown> {
+    return this.admin.getBookingDetail(id);
   }
 
   @Get('audit-logs')

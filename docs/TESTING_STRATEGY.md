@@ -29,9 +29,9 @@ Environ **10–15 tests Playwright** qui valident les parcours vitaux de la mark
 | 3 | **Réserver → payer (mode test) → confirmation** | `booking-payment.spec.ts` | Checkout → page paiement → carte test Stripe → statut confirmé |
 | 4 | **Annuler → statut + remboursement** | `booking-cancel.spec.ts` | Annulation résa → statut CANCELLED (refund pending si payé) |
 | 5 | **Messagerie** | `messages.spec.ts` | Ouvrir conversation (booking) + envoyer un message |
-| 6 | **Avis après prestation** | *À ajouter quand UI review existe* | Pour l’instant : non implémenté côté UI |
+| 6 | **Avis après prestation** | `review.spec.ts` | Résa terminée (seed) → formulaire avis → envoi (test ids : review-rating-select, review-comment-input, review-submit-button) |
 | 7 | **Hôte : voir annonces** | `host.spec.ts` | Connexion hôte → dashboard → liste annonces (création/publier via API/Prisma pour l’instant) |
-| 8 | **Hôte : calendrier** | *À ajouter quand UI calendrier existe* | Bloquer une date (non implémenté en UI) |
+| 8 | **Hôte : calendrier** | `host.spec.ts` | Hôte → Listings → Detail → section Disponibilités visible (HostAvailabilityCalendar) |
 | 9 | **Admin : modérer une annonce** | `admin.spec.ts` | Admin → Listings → changer statut (ex. PENDING → ACTIVE) |
 | 10 | **i18n** | `i18n.spec.ts` | Changer langue (FR/EN) + fallback EN sur locale invalide |
 | 11 | **Campagne email** | *À ajouter quand feature existe* | Créer campagne → preview → envoi segment test → log |
@@ -42,15 +42,16 @@ Les tests doivent **toujours tourner sur une base de données « test » réinit
 
 ## Base de données « test » pour E2E
 
-- Créer un fichier **`.env.test`** à la racine (copier `.env` et adapter) avec une base dédiée :
+- Créer un fichier **`.env.test`** à la racine (copier `.env` ou `.env.test.example` et adapter) avec une base dédiée :
   ```bash
   DATABASE_URL="postgresql://user:pass@localhost:5432/mobility_test"
   ```
+- Le script **`scripts/db-test-reset.mjs`** (commande `pnpm run db:test:reset`) charge `.env` puis, si `.env.test` existe et contient `DATABASE_URL`, fusionne les variables de `.env.test` (elles écrasent celles de `.env`). Ainsi, `migrate:deploy` et `db:seed` s’exécutent avec la base test.
 - Avant la suite E2E, réinitialiser la base test :
   ```bash
   pnpm run db:test:reset
   ```
-  Cela exécute `migrate:deploy` puis `db:seed` avec les variables de `.env.test`.
+  Cela exécute `migrate:deploy` puis `db:seed` avec les variables chargées (`.env.test` prioritaire pour `DATABASE_URL` si présent).
 - Les tests partent du principe que les comptes seed existent :  
   `client@example.com`, `host@example.com`, `mohamedsakho@drivepark.net` (admin) — mot de passe `demo`.  
   Une annonce active « Citadine centre Paris » (ville Paris) est créée pour le host.

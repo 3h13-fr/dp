@@ -1,6 +1,6 @@
 {
-  "name": "mobility-platform",
-  "version": "0.0.4",
+  "name": "drivepark",
+  "version": "0.1.0",
   "private": true,
   "pnpm": {
     "overrides": {
@@ -15,13 +15,21 @@
     "build": "pnpm run -r build",
     "verify:urls": "node scripts/verify-urls.mjs",
     "verify:listings": "node scripts/verify-listings-pages.mjs",
+    "verify:state": "pnpm verify:urls && pnpm verify:listings && pnpm test:e2e:no-server",
     "db:generate": "pnpm --filter database generate",
     "db:migrate": "pnpm exec dotenv -e .env -- pnpm --filter database migrate:deploy",
     "db:seed": "pnpm exec dotenv -e .env -- pnpm --filter database db:seed",
+    "db:update-coords": "pnpm exec dotenv -e .env -- node scripts/update-listings-coordinates.mjs",
     "db:studio": "pnpm exec dotenv -e .env -- pnpm --filter database studio",
     "db:test:reset": "node scripts/db-test-reset.mjs",
+    "db:approve-test-kyc": "pnpm exec dotenv -e .env -- node scripts/approve-test-kyc.mjs",
+    "test:setup": "pnpm exec dotenv -e .env -- node scripts/setup-e2e-tests.mjs",
     "kill:ports": "node scripts/kill-ports.mjs",
-    "test:e2e": "pnpm --filter web test:e2e:install-browsers && pnpm --filter web test:e2e:no-server"
+    "test:s3": "pnpm --filter api exec node scripts/test-s3.mjs",
+    "test:unit": "pnpm --filter api test",
+    "test:e2e": "pnpm test:setup && pnpm --filter web test:e2e:install-browsers && pnpm --filter web test:e2e",
+    "test:e2e:no-server": "pnpm test:setup && pnpm --filter web test:e2e:install-browsers && pnpm --filter web test:e2e:no-server",
+    "test:all": "pnpm test:unit && pnpm test:e2e"
   },
   "devDependencies": {
     "dotenv-cli": "^7.4.2",

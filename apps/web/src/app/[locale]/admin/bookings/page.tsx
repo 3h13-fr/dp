@@ -81,7 +81,7 @@ export default function AdminBookingsPage() {
                   </td>
                   <td className="p-3">{b.status}</td>
                   <td className="p-3">
-                    <Link href={`/${locale}/bookings/${b.id}`} className="font-medium text-primary hover:underline">
+                    <Link href={`/${locale}/admin/bookings/${b.id}`} className="font-medium text-primary hover:underline">
                       View
                     </Link>
                   </td>

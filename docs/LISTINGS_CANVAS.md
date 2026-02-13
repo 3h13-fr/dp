@@ -13,9 +13,10 @@ Document de référence pour développer les différents listings (location, exp
 
 Dans tous les cas, **un seul calendrier** gère la disponibilité du véhicule : une réservation en location ou en chauffeur bloque les mêmes créneaux pour ce véhicule.
 
-**Implémentation recommandée :**
-- **Court terme** : garder le schéma actuel (un `Listing` par type, `ListingType` = `CAR_RENTAL` | `MOTORIZED_EXPERIENCE` | `CHAUFFEUR`). Chaque listing a son propre `ListingAvailability`.
-- **Évolution** : introduire un concept **Véhicule** (ex. `Vehicle` ou `vehicleId` sur `Listing`) pour grouper les listings qui partagent le même véhicule et faire pointer les disponibilités vers ce véhicule (un calendrier unique). Lors de la réservation, bloquer la disponibilité du véhicule, quel que soit le type d’offre (location ou chauffeur).
+**Implémentation (en place) :**
+- Un `Listing` par type (`ListingType` = `CAR_RENTAL` | `MOTORIZED_EXPERIENCE` | `CHAUFFEUR`). Le modèle **Vehicle** existe (Make, Model, VIN, etc.) et `Listing.vehicleId` est optionnel.
+- **Calendrier par véhicule** : lorsqu’un listing a un `vehicleId`, les disponibilités sont stockées dans **VehicleAvailability** (un calendrier par véhicule, partagé par tous les listings de ce véhicule). Lecture/écriture (GET/PATCH availability) et vérification « plage disponible » utilisent ce calendrier. Les réservations (création) vérifient les chevauchements au niveau **véhicule** : une résa en location ou en chauffeur pour ce véhicule bloque les mêmes créneaux pour toute autre offre du même véhicule.
+- Les listings sans `vehicleId` continuent d’utiliser **ListingAvailability** (un calendrier par listing).
 
 ---
 
@@ -47,11 +48,14 @@ Chaque type a **sa propre route** et **sa propre page** avec un **formulaire de 
 
 ### 4.1 Routes
 
-- `/[locale]/listings` — redirection ou page « tous » (optionnel).
-- `/[locale]/listings/location` — listings **Location** (CAR_RENTAL).
-- `/[locale]/listings/experience` — listings **Expérience** (MOTORIZED_EXPERIENCE).
-- `/[locale]/listings/chauffeur` — listings **Chauffeur** (CHAUFFEUR).
-- `/[locale]/listings/[id]` — détail d’une annonce (inchangé, tous types).
+Les routes réelles utilisées dans l’app sont les **verticales** sans préfixe `listings/` :
+
+- `/[locale]/listings` — redirection vers `/[locale]/location` (avec query éventuelle).
+- `/[locale]/location` — listings **Location** (CAR_RENTAL).
+- `/[locale]/experience` — listings **Expérience** (MOTORIZED_EXPERIENCE).
+- `/[locale]/ride` — listings **Chauffeur** (CHAUFFEUR).
+- Détail d’une annonce : `/[locale]/location/[slug]`, `/[locale]/experience/[slug]`, `/[locale]/ride/[slug]` selon le type.
+- Checkout : `/[locale]/location/[slug]/checkout`, `/[locale]/experience/[slug]/checkout`, `/[locale]/ride/[slug]/checkout`.
 
 L’API supporte déjà le filtre `?type=CAR_RENTAL|MOTORIZED_EXPERIENCE|CHAUFFEUR` sur `GET /listings`.
 
@@ -61,18 +65,18 @@ L’API supporte déjà le filtre `?type=CAR_RENTAL|MOTORIZED_EXPERIENCE|CHAUFFE
 - **Expérience** : lieu, date (ou période), durée ou thème si pertinent. `type=MOTORIZED_EXPERIENCE` + critères géo/dates.
 - **Chauffeur** : lieu de prise en charge, date, heure, durée ou trajet. `type=CHAUFFEUR` + critères géo/dates.
 
-Chaque page (`/listings/location`, `/listings/experience`, `/listings/chauffeur`) doit donc avoir **son propre composant de formulaire de recherche** (ex. `SearchBarLocation`, `SearchBarExperience`, `SearchBarChauffeur`) avec les champs et l’appel API adaptés.
+Chaque page (`/location`, `/experience`, `/ride`) a **son propre composant de formulaire de recherche** (ex. `SearchBarLocation`, `SearchBarExperience`, `SearchBarChauffeur`) avec les champs et l’appel API adaptés. Les search bars redirigent vers `/[locale]/location`, `/[locale]/experience`, `/[locale]/ride` avec les paramètres de recherche.
 
 ### 4.3 Grille et détail
 
-- Chaque page listing (location / experience / chauffeur) affiche une **grille** d’annonces (composant type `ListingsGrid` ou équivalent) filtrée par `type`.
-- Le détail reste sur `/[locale]/listings/[id]` ; la fiche peut adapter l’affichage (prix/jour, durée, chauffeur, etc.) selon le `listing.type`.
+- Chaque page listing (location / experience / ride) affiche une **grille** d’annonces (composant type `ListingsGrid` ou équivalent) filtrée par `type`.
+- Le détail est sur `/[locale]/location/[slug]`, `/[locale]/experience/[slug]` ou `/[locale]/ride/[slug]` ; la fiche peut adapter l’affichage (prix/jour, durée, chauffeur, etc.) selon le `listing.type`.
 
 ---
 
 ## 5. Navigation globale (header)
 
-- Dans le header, remplacer ou compléter le lien unique « Annonces » par **trois liens** (ou un menu) : **Location**, **Expérience**, **Chauffeur**, pointant vers `/[locale]/listings/location`, `/[locale]/listings/experience`, `/[locale]/listings/chauffeur`.
+- Dans le header, **trois liens** (ou un menu) : **Location** (Véhicules), **Expérience**, **Chauffeur** (Courses), pointant vers `/[locale]/location`, `/[locale]/experience`, `/[locale]/ride`.
 - Ou : un seul lien « Annonces » qui mène vers une page avec les trois onglets (comme sur l’accueil), puis chaque onglet mène à la page dédiée.
 
 ---
@@ -82,9 +86,9 @@ Chaque page (`/listings/location`, `/listings/experience`, `/listings/chauffeur`
 | Élément | Action |
 |--------|--------|
 | Accueil | Onglets Location / Expérience / Chauffeur → chaque onglet mène à la page du type. |
-| Routes | `/[locale]/listings/location`, `/[locale]/listings/experience`, `/[locale]/listings/chauffeur` + `/[locale]/listings/[id]`. |
+| Routes | `/[locale]/location`, `/[locale]/experience`, `/[locale]/ride` ; détail `/[locale]/{location,experience,ride}/[slug]` ; checkout `/…/[slug]/checkout`. |
 | API | `GET /listings?type=CAR_RENTAL|MOTORIZED_EXPERIENCE|CHAUFFEUR` + city/country ou lat/lng/radius (déjà en place). |
-| Search form | Un formulaire par page (location, experience, chauffeur) avec champs adaptés au type. |
+| Search form | Un formulaire par page (location, experience, ride) avec champs adaptés au type ; soumission vers la même verticale avec query params. |
 | Calendrier unique | À terme : un véhicule peut avoir plusieurs offres (location + chauffeur) partageant la même disponibilité (voir §1). |
 
 ---

@@ -24,13 +24,15 @@ test.describe('Navigation routes', () => {
     await page.goto(`/${LOCALE}/listings`);
     await waitForAppReady(page);
     await expect(page).toHaveURL(new RegExp(`/${LOCALE}/location`), { timeout: 15000 });
-    await expect(page.getByTestId('listings-location-title')).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.getByText(/listing\(s\) found|No listings found|annonce\(s\) trouvée\(s\)|Aucune annonce|Loading|Chargement/i),
+    ).toBeVisible({ timeout: 15000 });
   });
 
   test('/en/login loads', async ({ page }) => {
     await page.goto(`/${LOCALE}/login`);
     await waitForAppReady(page);
-    await expect(page.getByTestId('login-title')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('login-title').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('/en/messages loads (no 404)', async ({ page }) => {
@@ -60,8 +62,8 @@ test.describe('Navigation routes', () => {
     await waitForAppReady(page);
     // Unauthenticated: layout redirects to login. Authenticated: admin UI (Admin/Dashboard/Users/Loading).
     await expect(
-      page.getByText(/Admin|Dashboard|Users|Loading/i).or(page.getByText(/Log in|Connexion|Sign in/i)),
-    ).first().toBeVisible({ timeout: 15000 });
+      page.getByText(/Admin|Dashboard|Users|Loading/i).or(page.getByText(/Log in|Connexion|Sign in/i)).first(),
+    ).toBeVisible({ timeout: 15000 });
     if (page.url().includes('/login')) {
       await expect(page).toHaveURL(new RegExp(`/${LOCALE}/login`));
     }

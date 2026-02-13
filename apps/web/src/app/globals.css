@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mapbox styles */
+@import 'mapbox-gl/dist/mapbox-gl.css';
+
+/* Fix for Mapbox map container */
+.mapboxgl-map {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.mapboxgl-canvas-container {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.mapboxgl-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 /*
  * Design system — Référence: Airbnb UI Kit (Figma)
  * https://www.figma.com/design/66fdWaCXgdEJVhMqdcXx2Q/Airbnb-UI-Kit--Community-?node-id=208-2874
@@ -14,12 +33,12 @@
   --muted: #717171;
   --muted-foreground: #717171;
   --border: #ebebeb;
-  --primary: #ff385c;
+  --primary: #212121;
   --primary-foreground: #ffffff;
 
   /* Airbnb UI Kit — à aligner avec le Figma */
-  --color-primary: #ff385c;        /* Rausch / Coral (CTA, liens, accent) */
-  --color-primary-hover: #e31c5f;
+  --color-primary: #212121;        /* Rausch / Coral (CTA, liens, accent) */
+  --color-primary-hover: #3a3a3a;
   --color-primary-light: #fff1f2;
   --color-black: #222222;
   --color-gray-dark: #484848;
@@ -27,14 +46,18 @@
   --color-gray-light: #ebebeb;
   --color-gray-bg: #f7f7f7;
   --color-white: #ffffff;
+  --color-rarity-bg: #fff1f2; /* Fond très clair rosé pour message rareté */
   --radius-button: 8px;
   --radius-input: 8px;
   --radius-pill: 9999px;
   --radius-card: 12px;
+  --radius-card-medium: 12px; /* Coins arrondis moyens pour cards */
   --shadow-card: 0 6px 16px rgba(0, 0, 0, 0.12);
+  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.08); /* Ombre douce pour cards */
   --shadow-dropdown: 0 6px 20px rgba(0, 0, 0, 0.15);
   --shadow-search: 0 1px 2px rgba(0, 0, 0, 0.08);
   --shadow-search-hover: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --shadow-search-mobile: 0 3px 10px rgba(0, 0, 0, 0.1);
 }
 
 body {

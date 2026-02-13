@@ -1,17 +1,36 @@
 import { BadRequestException, Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { IsString, IsOptional, MinLength } from 'class-validator';
+import { IsString, IsOptional, MinLength, IsArray, ValidateNested, IsIn } from 'class-validator';
+import { Type } from 'class-transformer';
 import { MessagesService } from './messages.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { User } from 'database';
+
+class AttachmentUrlDto {
+  @IsString()
+  url: string;
+
+  @IsIn(['image', 'file'])
+  type: 'image' | 'file';
+
+  @IsOptional()
+  @IsString()
+  filename?: string;
+}
 
 class SendMessageDto {
   @IsString()
   bookingId: string;
 
   @IsString()
-  @MinLength(1, { message: 'Message cannot be empty' })
-  body: string;
+  @IsOptional()
+  body?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AttachmentUrlDto)
+  attachmentUrls?: AttachmentUrlDto[];
 }
 
 @Controller('messages')
@@ -41,6 +60,6 @@ export class MessagesController {
   @UseGuards(AuthGuard('jwt'))
   @Post('send')
   send(@CurrentUser() user: User, @Body() dto: SendMessageDto) {
-    return this.messages.sendMessageForBooking(user.id, dto.bookingId, dto.body);
+    return this.messages.sendMessageForBooking(user.id, dto.bookingId, dto.body ?? '', dto.attachmentUrls);
   }
 }

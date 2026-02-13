@@ -28,17 +28,23 @@ export class MessagesService {
 
   /** Thread for one booking (guest + host only). Messages + notifications linked to this reservation. */
   async findThreadByBooking(bookingId: string, userId: string) {
-    await this.assertParticipant(bookingId, userId);
+    const booking = await this.assertParticipant(bookingId, userId);
     const [messages, bookingNotifications] = await Promise.all([
       this.prisma.message.findMany({
         where: { bookingId },
         orderBy: { createdAt: 'asc' },
         include: {
           sender: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+          attachments: true,
         },
       }),
       this.notifications.findForUserByBooking(userId, bookingId),
     ]);
+    const messageItems = messages.map((m) => ({
+      ...m,
+      isSystem: false as const,
+      senderRole: m.senderId === booking.hostId ? ('host' as const) : ('guest' as const),
+    }));
     const notificationItems = bookingNotifications.map((n) => ({
       id: `notif-${n.id}`,
       body: [n.title, n.body].filter(Boolean).join(' — ') || n.type,
@@ -49,7 +55,7 @@ export class MessagesService {
       isSystem: true as const,
       notificationId: n.id,
     }));
-    const combined = [...messages.map((m) => ({ ...m, isSystem: false as const })), ...notificationItems];
+    const combined = [...messageItems, ...notificationItems];
     combined.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     return combined;
   }
@@ -74,13 +80,24 @@ export class MessagesService {
         where: { OR: [{ guestId: userId }, { hostId: userId }] },
         orderBy: { updatedAt: 'desc' },
         include: {
-          listing: { select: { id: true, title: true } },
+          listing: {
+            select: {
+              id: true,
+              title: true,
+              displayName: true,
+              city: true,
+              photos: { orderBy: { order: 'asc' }, take: 1 },
+            },
+          },
           guest: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
           host: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
           messages: {
             orderBy: { createdAt: 'desc' },
             take: 1,
-            include: { sender: { select: { id: true, firstName: true, lastName: true } } },
+            include: {
+              sender: { select: { id: true, firstName: true, lastName: true } },
+              attachments: true,
+            },
           },
         },
       }),
@@ -89,12 +106,23 @@ export class MessagesService {
     const bookingConversations = bookings.map((b) => {
       const otherUser = b.guestId === userId ? b.host : b.guest;
       const lastMessage = b.messages[0];
+      const firstPhoto = b.listing.photos?.[0];
       return {
         bookingId: b.id,
-        listing: b.listing,
+        listing: { id: b.listing.id, title: b.listing.title, displayName: b.listing.displayName },
+        listingFirstPhotoUrl: firstPhoto?.url ?? null,
+        listingCity: b.listing.city ?? null,
+        bookingStartAt: b.startAt.toISOString(),
+        bookingEndAt: b.endAt.toISOString(),
         otherUser: otherUser ? { id: otherUser.id, firstName: otherUser.firstName, lastName: otherUser.lastName, avatarUrl: otherUser.avatarUrl } : null,
         lastMessage: lastMessage
-          ? { id: lastMessage.id, body: lastMessage.body, createdAt: lastMessage.createdAt, senderId: lastMessage.senderId }
+          ? {
+              id: lastMessage.id,
+              body: lastMessage.body,
+              createdAt: lastMessage.createdAt,
+              senderId: lastMessage.senderId,
+              attachments: lastMessage.attachments ?? [],
+            }
           : null,
         status: b.status,
       };
@@ -114,23 +142,52 @@ export class MessagesService {
   }
 
   /** Send message in a booking thread. Receiver is the other party (host or guest). */
-  async sendMessageForBooking(senderId: string, bookingId: string, body: string) {
+  async sendMessageForBooking(
+    senderId: string,
+    bookingId: string,
+    body: string,
+    attachmentUrls?: { url: string; type: 'image' | 'file'; filename?: string }[],
+  ) {
+    const hasBody = typeof body === 'string' && body.trim().length > 0;
+    const hasAttachments = attachmentUrls && attachmentUrls.length > 0;
+    if (!hasBody && !hasAttachments) {
+      throw new BadRequestException('Message must have body or attachments');
+    }
     const booking = await this.assertParticipant(bookingId, senderId);
     const receiverId = booking.guestId === senderId ? booking.hostId : booking.guestId;
 
     const message = await this.prisma.message.create({
-      data: { senderId, receiverId, body, bookingId },
+      data: {
+        senderId,
+        receiverId,
+        body: body?.trim() ?? '',
+        bookingId,
+        attachments:
+          hasAttachments && attachmentUrls
+            ? {
+                create: attachmentUrls.map((a) => ({
+                  url: a.url,
+                  type: a.type,
+                  filename: a.filename ?? null,
+                })),
+              }
+            : undefined,
+      },
       include: {
         sender: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+        attachments: true,
       },
     });
+    const senderRole = message.senderId === booking.hostId ? 'host' : 'guest';
     const payload = {
       id: message.id,
       bookingId: message.bookingId,
       senderId: message.senderId,
       sender: message.sender,
       body: message.body,
+      attachments: message.attachments,
       createdAt: message.createdAt,
+      senderRole,
     };
     this.events.emitMessageToBooking(bookingId, payload);
     await this.queue.enqueueNotification(

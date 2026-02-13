@@ -6,9 +6,10 @@ import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { apiFetch, getToken } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { getListingTitle } from '@/lib/listings';
 import { BookingPaySummary } from '@/components/listings/BookingPaySummary';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -76,6 +77,7 @@ type BookingState = {
 };
 
 export default function PayPage() {
+  const { ready } = useRequireAuth();
   const params = useParams();
   const router = useRouter();
   const locale = useLocale();
@@ -85,10 +87,7 @@ export default function PayPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!getToken()) {
-      router.replace(`/${locale}/login`);
-      return;
-    }
+    if (!ready) return;
     apiFetch(`/bookings/${id}`)
       .then((r) => r.json())
       .then((b) => {
@@ -109,8 +108,9 @@ export default function PayPage() {
       .then((data) => data?.clientSecret && setClientSecret(data.clientSecret))
       .catch(() => setBooking(null))
       .finally(() => setLoading(false));
-  }, [id, router, locale]);
+  }, [id, ready]);
 
+  if (!ready) return null;
   if (loading || !booking) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-8">
